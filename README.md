@@ -47,5 +47,5 @@ for the example plugins. If you want to run tests or use the example plugins,
 you'll need to install Git LFS before cloning to get these files. See the
 [Git LFS installation instructions][git lfs install] for more information.
 
-[archiving models]: https://dilililabs.atlassian.net/wiki/x/AQAPDQ
 [git lfs install]: https://github.com/git-lfs/git-lfs/wiki/Installation
+
