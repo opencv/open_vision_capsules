@@ -1,0 +1,4 @@
+*.cap
+__pycache__/
+*.egg-info/
+.idea
