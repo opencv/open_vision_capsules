@@ -48,4 +48,3 @@ you'll need to install Git LFS before cloning to get these files. See the
 [Git LFS installation instructions][git lfs install] for more information.
 
 [git lfs install]: https://github.com/git-lfs/git-lfs/wiki/Installation
-
