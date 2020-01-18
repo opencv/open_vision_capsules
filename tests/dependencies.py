@@ -1,6 +1,6 @@
 from pathlib import Path
 
-TEST_IMAGES = Path("vcap/tests/test_images")
+TEST_IMAGES = Path("tests/test_images")
 
 ONE_PERSON_IMAGE = TEST_IMAGES / "one_person.jpg"
 
