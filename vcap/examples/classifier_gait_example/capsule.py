@@ -1,10 +1,9 @@
-from vcap import (
-    BaseCapsule,
-    NodeDescription,
-    DeviceMapper
-)
-from .backend import Backend
+from typing import Dict
+
+from vcap import BaseCapsule, NodeDescription, DeviceMapper, BaseBackend
+
 from . import config
+from .backend import Backend
 
 
 class Capsule(BaseCapsule):
@@ -19,9 +18,26 @@ class Capsule(BaseCapsule):
         detections=["person"],
         attributes={config.category: config.values},
         extra_data=[config.extra_data])
-    backend_loader = lambda capsule_files, device: Backend(
-        model_bytes=capsule_files["classification_gait_model.pb"],
-        metadata_bytes=capsule_files["dataset_metadata.json"],
-        model_name="inception_resnet_v2",
-        device=device)
     options = {}
+
+    @staticmethod
+    def backend_loader(capsule_files: Dict[str, bytes], device: str) \
+            -> BaseBackend:
+
+        # Real plugins do not need to do this check. This is only to provide
+        # a warning for this example because the model is not included in the
+        # repo.
+        model_filename = "classification_gait_model.pb"
+        try:
+            model_file = capsule_files[model_filename]
+        except KeyError as exc:
+            message = f"Model [{model_filename}] not found. Did you make " \
+                      f"sure to run tests? Example models files are not " \
+                      f"stored directly in the repo, but are downloaded " \
+                      f"when tests are run."
+            raise FileNotFoundError(message) from exc
+
+        return Backend(model_bytes=model_file,
+                       metadata_bytes=capsule_files["dataset_metadata.json"],
+                       model_name="inception_resnet_v2",
+                       device=device)

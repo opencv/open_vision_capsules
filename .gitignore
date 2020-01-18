@@ -1,4 +1,8 @@
 *.cap
+*.pb
+*.jpg
+*.png
+
 __pycache__/
 *.egg-info/
 .idea
