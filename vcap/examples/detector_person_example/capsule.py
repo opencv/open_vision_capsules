@@ -1,10 +1,8 @@
-from vcap import (
-    BaseCapsule,
-    DeviceMapper,
-    NodeDescription,
-    FloatOption,
-    BoolOption,
-    IntOption)
+from typing import Dict
+
+from vcap import BaseBackend, BaseCapsule, DeviceMapper, NodeDescription, \
+    FloatOption, BoolOption, IntOption
+
 from .backend import Backend
 
 
@@ -18,10 +16,6 @@ class Capsule(BaseCapsule):
     output_type = NodeDescription(
         size=NodeDescription.Size.ALL,
         detections=["person"])
-    backend_loader = lambda capsule_files, device: Backend(
-        model_bytes=capsule_files["ssd_mobilenet_v1_coco.pb"],
-        metadata_bytes=capsule_files["dataset_metadata.json"],
-        device=device)
     options = {
         "detection_threshold": FloatOption(
             description="The confidence threshold for the model. A higher "
@@ -42,3 +36,24 @@ class Capsule(BaseCapsule):
             min_val=200,
             max_val=4000)
     }
+
+    @staticmethod
+    def backend_loader(capsule_files: Dict[str, bytes], device: str) \
+            -> BaseBackend:
+
+        # Real plugins do not need to do this check. This is only to provide
+        # a warning for this example because the model is not included in the
+        # repo.
+        model_filename = "ssd_mobilenet_v1_coco.pb"
+        try:
+            model_file = capsule_files[model_filename]
+        except KeyError as exc:
+            message = f"Model [{model_filename}] not found. Did you make " \
+                      f"sure to run tests? Example models files are not " \
+                      f"stored directly in the repo, but are downloaded " \
+                      f"when tests are run."
+            raise FileNotFoundError(message) from exc
+
+        return Backend(model_bytes=model_file,
+                       metadata_bytes=capsule_files["dataset_metadata.json"],
+                       device=device)

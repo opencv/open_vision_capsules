@@ -7,9 +7,7 @@ setup(
     name='vcap',
     version='0.1.0',
     description="A library for creating OpenVisionCapsules in Python",
-    packages=find_namespace_packages(
-        include=["vcap*"],
-        exclude=["vcap.tests*"]),
+    packages=find_namespace_packages(include=["vcap*"]),
 
     author="Dilili Labs",
 
