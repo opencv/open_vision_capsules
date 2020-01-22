@@ -41,7 +41,7 @@ class Capsule(BaseCapsule):
     def backend_loader(capsule_files: Dict[str, bytes], device: str) \
             -> BaseBackend:
 
-        # Real plugins do not need to do this check. This is only to provide
+        # Real capsules do not need to do this check. This is only to provide
         # a warning for this example because the model is not included in the
         # repo.
         model_filename = "ssd_mobilenet_v1_coco.pb"

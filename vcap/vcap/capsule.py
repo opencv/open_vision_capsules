@@ -105,8 +105,8 @@ class BaseCapsule(ABC):
         this is the logic that allows even usage across all GPUs."""
         with self.backends_lock:
             # BaseBackend.oven.total_imgs_in_pipeline only represents the
-            # images in a single plugin's pipeline, not all the plugins.
-            # This helps distribute the load of multiple plugins.
+            # images in a single capsule's pipeline, not all the capsules.
+            # This helps distribute the load of multiple capsules.
             #
             # Note the inplace shuffle, but this should be okay, esp. w/ lock
             random.shuffle(self.backends)

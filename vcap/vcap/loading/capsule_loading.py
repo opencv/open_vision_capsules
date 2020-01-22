@@ -27,9 +27,9 @@ def load_capsule(path: Union[str, Path],
     """Load a capsule from the filesystem.
 
     :param path: The path to the capsule file
-    :param key: The AES key to decrypt the plugin with, or None if the plugin
+    :param key: The AES key to decrypt the capsule with, or None if the capsule
         is not encrypted
-    :param inference_mode: If True, the backends for this plugin will be
+    :param inference_mode: If True, the backends for this capsule will be
         started. If False, the capsule will never be able to run inference, but
         it will still have it's various readable attributes.
     """
