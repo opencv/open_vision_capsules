@@ -1,4 +1,6 @@
-# Introduction
+# OpenVisionCapsules
+
+[![Documentation Status](https://readthedocs.org/projects/openvisioncapsules/badge/?version=latest)](https://openvisioncapsules.readthedocs.io/en/latest/?badge=latest)
 
 This repository contains the OpenVisionCapsules SDK, a set of Python libraries
 for encapsulating machine learning and computer vision algorithms for
@@ -24,6 +26,8 @@ suggestions, please open an issue.
 
 # Getting Started
 
+Take a look at the [documentation here][docs].
+
 A couple example capsules are available under `vcap/examples`, demonstrating
 how to create classifier and detector capsules from TensorFlow models.
 
@@ -43,3 +47,5 @@ To make use of the example capsules in the `vcap/examples/` directory, make
 sure to run the tests with pytest (from the root of the repo). The tests
 download all the necessary models and images, including the models for the 
 example capsules.
+
+[docs]: https://openvisioncapsules.readthedocs.io/en/latest/
