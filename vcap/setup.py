@@ -5,7 +5,7 @@ test_packages = ["pytest", "mock"]
 
 setup(
     name='vcap',
-    version='0.1.0',
+    version='0.1.1',
     description="A library for creating OpenVisionCapsules in Python",
     packages=find_namespace_packages(include=["vcap*"]),
 

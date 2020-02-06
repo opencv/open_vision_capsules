@@ -5,7 +5,7 @@ test_packages = ["pytest", "mock"]
 
 setup(
     name='vcap-utils',
-    version='0.1.0',
+    version='0.1.1',
     description="Utilities for creating OpenVisionCapsules easily in Python",
     packages=find_namespace_packages(
         include=["vcap_utils*"],
@@ -14,7 +14,7 @@ setup(
     author="Dilili Labs",
 
     install_requires=[
-        "vcap"
+        "vcap==0.1.1"
     ],
 
     extras_require={
