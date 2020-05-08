@@ -9,8 +9,7 @@ def verify_all_threads_closed(allowable_threads=None):
                           'pydevd.Reader',
                           'pydevd.CommandThread',
                           'profiler.Reader',
-                          'MainThread',
-                          'GObjectInitThread']
+                          'MainThread']
 
     open_threads = [t.name for t in threading.enumerate()
                     if t.name not in allowable_threads]
