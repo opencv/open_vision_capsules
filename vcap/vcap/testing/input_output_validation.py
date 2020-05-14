@@ -3,7 +3,7 @@ import logging
 import random
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 from uuid import uuid4
 
 import cv2
@@ -177,7 +177,8 @@ def _test_capsule_input_output(capsule, image_paths):
 
 
 def perform_capsule_tests(unpackaged_capsule_dir: Union[Path, str],
-                          image_paths: List[Union[Path, str]]):
+                          image_paths: List[Union[Path, str]],
+                          allowable_threads: Optional[List[str]] = None):
     """This tests several many things:
     1) The capsule can handle batches of images
     2) The capsule can handle different capsule option combinations
@@ -220,4 +221,4 @@ def perform_capsule_tests(unpackaged_capsule_dir: Union[Path, str],
             "Oh no! This capsule is probably keeping a reference to itself. " \
             "This is a big no no!"
 
-    verify_all_threads_closed()
+    verify_all_threads_closed(allowable_threads)
