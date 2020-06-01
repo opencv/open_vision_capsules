@@ -42,6 +42,7 @@ class BaseOpenVINOBackend(BaseBackend):
                                 "requested, but OPENVINO_EXTENSION_PATH "
                                 "is not set. No extensions will be "
                                 "loaded.")
+                cpu_extensions = []
         for cpu_extension in cpu_extensions:
             self.ie.add_extension(cpu_extension, device_name)
 
