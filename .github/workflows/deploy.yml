@@ -1,0 +1,53 @@
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.6']
+    
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Get Pip cache directory
+      id: pip-cache
+      run: |
+        echo "::set-output name=dir::$(pip cache dir)"
+    - uses: actions/cache@v1
+      id: cache
+      with:
+        path: ${{ steps.pip-cache.outputs.dir }}
+        key: ${{ runner.os }}-${{ hashFiles('**/setup.py') }}-pip-cache
+        restore-keys: |
+          ${{ runner.os }}-pip-cache
+    - name: Install dependencies
+      run: |
+        pip install --upgrade setuptools wheel
+    - name: Package up vcap
+      working-directory: ./vcap
+      run: |
+        python3 setup.py sdist bdist_wheel
+    - name: Publish vcap
+      working-directory: ./vcap
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_password }}
+    - name: Package up vcap-utils
+      working-directory: ./vcap_utils
+      run: |
+        python3 setup.py sdist bdist_wheel
+    - name: Publish vcap-utils
+      working-directory: ./vcap_utils
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_password }}
