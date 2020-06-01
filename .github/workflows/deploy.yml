@@ -30,24 +30,20 @@ jobs:
           ${{ runner.os }}-pip-cache
     - name: Install dependencies
       run: |
-        pip install --upgrade setuptools wheel
-    - name: Package up vcap
-      working-directory: ./vcap
-      run: |
-        python3 setup.py sdist bdist_wheel
+        pip install --upgrade setuptools wheel twine
     - name: Publish vcap
       working-directory: ./vcap
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        user: __token__
-        password: ${{ secrets.pypi_password }}
-    - name: Package up vcap-utils
-      working-directory: ./vcap_utils
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
       run: |
         python3 setup.py sdist bdist_wheel
+        python3 -m twine upload --repository testpypi dist/*
     - name: Publish vcap-utils
       working-directory: ./vcap_utils
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        user: __token__
-        password: ${{ secrets.pypi_password }}
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
+      run: |
+        python3 setup.py sdist bdist_wheel
+        python3 -m twine upload --repository testpypi dist/*
