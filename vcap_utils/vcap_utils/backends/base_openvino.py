@@ -12,11 +12,14 @@ from vcap.backend import BaseBackend
 
 
 class BaseOpenVINOBackend(BaseBackend):
-    def __init__(self, model_xml: os.PathLike, weights_bin: os.PathLike,
+    def __init__(self, model: bytes,
+                 weights: bytes,
                  device_name: str = "CPU",
                  cpu_extensions: Optional[List[str]] = None):
         """
-        cpu_extension can be one of two options:
+        :param model: The XML data defining the OpenVINO model architecture
+        :param weights: The .bin file data defining the model's weights
+        :param cpu_extensions:
           None (default): Load extensions from the path specified by the
             OPENVINO_EXTENSION_PATH environment variable (should be set
             already to the default path for the extensions)
@@ -25,7 +28,7 @@ class BaseOpenVINOBackend(BaseBackend):
             extensions
         """
         super().__init__()
-        from openvino.inference_engine import IENetwork, IECore
+        from openvino.inference_engine import IECore
 
         self.ie = IECore()
         if cpu_extensions is None:
@@ -46,7 +49,8 @@ class BaseOpenVINOBackend(BaseBackend):
         for cpu_extension in cpu_extensions:
             self.ie.add_extension(cpu_extension, device_name)
 
-        self.net = IENetwork(model=str(model_xml), weights=str(weights_bin))
+        self.net = self.ie.read_network(
+            model=model, weights=weights, init_from_buffer=True)
 
         # (Unused for now)
         batching_enabled = False
@@ -61,11 +65,10 @@ class BaseOpenVINOBackend(BaseBackend):
     @classmethod
     def from_bytes(cls, model_bytes: bytes, weights_bytes: bytes,
                    *args, **kwargs):
-        with NamedTemporaryFile() as model_fi, \
-                NamedTemporaryFile() as weights_fi:
-            model_fi.write(model_bytes)
-            weights_fi.write(weights_bytes)
-            return cls(model_fi.name, weights_fi.name, *args, **kwargs)
+        """This method is deprecated. Use the BaseOpenVINOBackend constructor
+        instead.
+        """
+        return cls(model=model_bytes, weights=weights_bytes, *args, **kwargs)
 
     @abc.abstractmethod
     def parse_results(self, results: np.ndarray, resize: Resize) -> object:
