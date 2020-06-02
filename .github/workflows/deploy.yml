@@ -1,0 +1,52 @@
+name: Publish packages
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.6']
+    
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        # Include tags in the checkout
+        fetch-depth: 0
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Get Pip cache directory
+      id: pip-cache
+      run: |
+        echo "::set-output name=dir::$(pip cache dir)"
+    - uses: actions/cache@v1
+      id: cache
+      with:
+        path: ${{ steps.pip-cache.outputs.dir }}
+        key: ${{ runner.os }}-${{ hashFiles('**/setup.py') }}-pip-cache
+        restore-keys: |
+          ${{ runner.os }}-pip-cache
+    - name: Install dependencies
+      run: |
+        pip install --upgrade setuptools wheel twine
+    - name: Publish vcap
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        python3 vcap/setup.py sdist bdist_wheel
+        python3 -m twine upload dist/*
+    - name: Publish vcap-utils
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        # Clean up from vcap packaging
+        rm -r dist
+        python3 vcap_utils/setup.py sdist bdist_wheel
+        python3 -m twine upload dist/*
