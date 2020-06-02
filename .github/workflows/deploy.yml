@@ -17,6 +17,8 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+        # Include tags in the checkout
+        fetch-depth: 0
     - name: Get Pip cache directory
       id: pip-cache
       run: |
