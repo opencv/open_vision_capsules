@@ -19,12 +19,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        # Include tags in the checkout
+        fetch-depth: 0
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-        # Include tags in the checkout
-        fetch-depth: 0
     - name: Get Pip cache directory
       id: pip-cache
       run: |
