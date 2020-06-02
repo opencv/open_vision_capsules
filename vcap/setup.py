@@ -11,8 +11,13 @@ setup(
 
     # Pull the package version from Git tags
     use_scm_version={
+        # Helps setuptools_scm find the repository root
         "root": "..",
         "relative_to": __file__,
+        # We want to be able to push these releases to PyPI, which doesn't
+        # support local versions. Local versions are anything after the "+" in
+        # a version string like "0.1.4.dev16+heyguys".
+        "local_scheme": "no-local-version",
     },
 
     setup_requires=[
