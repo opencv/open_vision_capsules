@@ -5,11 +5,19 @@ test_packages = ["pytest", "mock"]
 
 setup(
     name='vcap',
-    version='0.1.3',
     description="A library for creating OpenVisionCapsules in Python",
+    author="Dilili Labs",
     packages=find_namespace_packages(include=["vcap*"]),
 
-    author="Dilili Labs",
+    # Pull the package version from Git tags
+    use_scm_version={
+        "root": "..",
+        "relative_to": __file__,
+    },
+
+    setup_requires=[
+        "setuptools_scm",
+    ],
 
     install_requires=[
         "pycryptodomex==3.9.7",

@@ -5,16 +5,24 @@ test_packages = ["pytest", "mock"]
 
 setup(
     name='vcap-utils',
-    version='0.1.3',
     description="Utilities for creating OpenVisionCapsules easily in Python",
+    author="Dilili Labs",
     packages=find_namespace_packages(
         include=["vcap_utils*"],
         exclude=["vcap_utils.tests*"]),
 
-    author="Dilili Labs",
+    # Pull the package version from Git tags
+    use_scm_version={
+        "root": "..",
+        "relative_to": __file__,
+    },
+
+    setup_requires=[
+        "setuptools_scm",
+    ],
 
     install_requires=[
-        "vcap==0.1.3"
+        "vcap",
     ],
 
     extras_require={
