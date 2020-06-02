@@ -12,7 +12,10 @@ setup(
         exclude=["vcap_utils.tests*"]),
 
     # Pull the package version from Git tags
-    use_scm_version=True,
+    use_scm_version={
+        "root": "..",
+        "relative_to": __file__,
+    },
 
     setup_requires=[
         "setuptools_scm",

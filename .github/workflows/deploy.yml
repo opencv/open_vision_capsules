@@ -38,18 +38,18 @@ jobs:
       run: |
         pip install --upgrade setuptools wheel twine
     - name: Publish vcap
-      working-directory: ./vcap
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
       run: |
-        python3 setup.py sdist bdist_wheel
+        python3 vcap/setup.py sdist bdist_wheel
         python3 -m twine upload --repository testpypi dist/*
     - name: Publish vcap-utils
-      working-directory: ./vcap_utils
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
       run: |
-        python3 setup.py sdist bdist_wheel
+        # Clean up from vcap packaging
+        rm -r dist
+        python3 vcap_utils/setup.py sdist bdist_wheel
         python3 -m twine upload --repository testpypi dist/*
