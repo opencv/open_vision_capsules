@@ -65,10 +65,12 @@ class BaseOpenVINOBackend(BaseBackend):
     @classmethod
     def from_bytes(cls, model_bytes: bytes, weights_bytes: bytes,
                    *args, **kwargs):
-        """This method is deprecated. Use the BaseOpenVINOBackend constructor
-        instead.
         """
-        return cls(model=model_bytes, weights=weights_bytes, *args, **kwargs)
+        .. deprecated:: 0.1.4
+           Use the BaseOpenVINOBackend constructor
+        """
+        return cls(model_xml=model_bytes, weights_bin=weights_bytes,
+                   *args, **kwargs)
 
     @abc.abstractmethod
     def parse_results(self, results: np.ndarray, resize: Resize) -> object:
