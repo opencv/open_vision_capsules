@@ -10,10 +10,7 @@ setup(
     packages=find_namespace_packages(include=["vcap*"]),
 
     # Pull the package version from Git tags
-    use_scm_version={
-        "root": "..",
-        "relative_to": __file__,
-    },
+    use_scm_version=True,
 
     setup_requires=[
         "setuptools_scm",
