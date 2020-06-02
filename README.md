@@ -37,8 +37,13 @@ To install OpenVisionCapsules locally, clone the repository and run the
 following commands to install the `vcap` and `vcap-utils` packages in the
 current environment.
 
+<!--
+Installing both packages at the same time breaks setuptools_scm. See:
+https://github.com/pypa/setuptools_scm/issues/454
+-->
 ```
-pip3 install -e ./vcap ./vcap_utils
+pip3 install -e ./vcap
+pip3 install -e ./vcap_utils
 ```
 
 # Examples

@@ -5,11 +5,24 @@ test_packages = ["pytest", "mock"]
 
 setup(
     name='vcap',
-    version='0.1.3',
     description="A library for creating OpenVisionCapsules in Python",
+    author="Dilili Labs",
     packages=find_namespace_packages(include=["vcap*"]),
 
-    author="Dilili Labs",
+    # Pull the package version from Git tags
+    use_scm_version={
+        # Helps setuptools_scm find the repository root
+        "root": "..",
+        "relative_to": __file__,
+        # We want to be able to push these releases to PyPI, which doesn't
+        # support local versions. Local versions are anything after the "+" in
+        # a version string like "0.1.4.dev16+heyguys".
+        "local_scheme": "no-local-version",
+    },
+
+    setup_requires=[
+        "setuptools_scm",
+    ],
 
     install_requires=[
         "pycryptodomex==3.9.7",
