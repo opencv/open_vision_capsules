@@ -12,13 +12,13 @@ from vcap.backend import BaseBackend
 
 
 class BaseOpenVINOBackend(BaseBackend):
-    def __init__(self, model: bytes,
-                 weights: bytes,
+    def __init__(self, model_xml: bytes,
+                 weights_bin: bytes,
                  device_name: str = "CPU",
                  cpu_extensions: Optional[List[str]] = None):
         """
-        :param model: The XML data defining the OpenVINO model architecture
-        :param weights: The .bin file data defining the model's weights
+        :param model_xml: The XML data defining the OpenVINO model architecture
+        :param weights_bin: The .bin file data defining the model's weights
         :param cpu_extensions:
           None (default): Load extensions from the path specified by the
             OPENVINO_EXTENSION_PATH environment variable (should be set
@@ -50,7 +50,7 @@ class BaseOpenVINOBackend(BaseBackend):
             self.ie.add_extension(cpu_extension, device_name)
 
         self.net = self.ie.read_network(
-            model=model, weights=weights, init_from_buffer=True)
+            model=model_xml, weights=weights_bin, init_from_buffer=True)
 
         # (Unused for now)
         batching_enabled = False
