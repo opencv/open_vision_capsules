@@ -3,8 +3,6 @@ name: Publish packages
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
 
 jobs:
   deploy:
@@ -40,17 +38,17 @@ jobs:
       working-directory: ./vcap
       env:
         TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         PRE_RELEASE_SUFFIX=$(python3 ../.github/workflows/pre_release_suffix.py) \
           python3 setup.py sdist bdist_wheel
-        python3 -m twine upload --repository testpypi dist/*
+        python3 -m twine upload dist/*
     - name: Publish vcap-utils
       working-directory: ./vcap_utils
       env:
         TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         PRE_RELEASE_SUFFIX=$(python3 ../.github/workflows/pre_release_suffix.py) \
           python3 setup.py sdist bdist_wheel
-        python3 -m twine upload --repository testpypi dist/*
+        python3 -m twine upload dist/*
