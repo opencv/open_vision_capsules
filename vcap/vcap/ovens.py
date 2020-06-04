@@ -35,7 +35,7 @@ class Oven:
         """
         self.batch_fn = batch_fn
         self._request_queue = Queue()
-        self.workers = [Thread(target=self._worker, name="OvenThread")
+        self.workers = [Thread(target=self._worker, daemon=True, name="OvenThread")
                         for _ in range(num_workers)]
 
         # The number of images currently in the work queue or being processed
