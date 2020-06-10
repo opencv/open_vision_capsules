@@ -14,7 +14,7 @@ from vcap.backend import BaseBackend
 class BaseOpenVINOBackend(BaseBackend):
     def __init__(self, model_xml: bytes,
                  weights_bin: bytes,
-                 device_name: str = "CPU",
+                 device_name: str,
                  cpu_extensions: Optional[List[str]] = None):
         """
         :param model_xml: The XML data defining the OpenVINO model architecture
