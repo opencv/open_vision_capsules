@@ -28,6 +28,9 @@ class BaseOpenVINOBackend(BaseBackend):
             extensions
         """
         super().__init__()
+        # Convert from the vcap device naming format openvino format
+        device_name = "CPU" if device_name[:3] == "CPU" else device_name
+
         from openvino.inference_engine import IECore
 
         self.ie = IECore()
