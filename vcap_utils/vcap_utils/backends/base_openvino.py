@@ -55,9 +55,7 @@ class BaseOpenVINOBackend(BaseBackend):
         self.net = self.ie.read_network(
             model=model_xml, weights=weights_bin, init_from_buffer=True)
 
-        # (Unused for now)
-        batching_enabled = False
-        config = {'DYN_BATCH_ENABLED': 'YES'} if batching_enabled else {}
+
 
         self.exec_net = self.ie.load_network(network=self.net,
                                              device_name=device_name,
