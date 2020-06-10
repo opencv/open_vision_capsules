@@ -53,7 +53,7 @@ class DeviceMapper:
         def filter_func(devices):
             gpu_devices = [d for d in devices if d.startswith("GPU:")]
             if not gpu_devices and cpu_fallback:
-                return ['CPU:0']
+                return ["CPU:0"]
             return gpu_devices
 
         return DeviceMapper(filter_func=filter_func)
