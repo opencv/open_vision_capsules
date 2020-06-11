@@ -55,12 +55,15 @@ class BaseOpenVINOBackend(BaseBackend):
         self.net = self.ie.read_network(
             model=model_xml, weights=weights_bin, init_from_buffer=True)
 
-
-
-        self.exec_net = self.ie.load_network(network=self.net,
-                                             device_name=device_name,
-                                             config=config)
-
+        # device_name = "MYRIAD.3.1-ma2480"
+        print("Loaded onto device", device_name)
+        n_requests = 40
+        self.oven.MAX_BATCH_SIZE = n_requests
+        self.exec_net = self.ie.load_network(
+            network=self.net,
+            device_name=f"MULTI:{device_name}",
+            num_requests=n_requests,  # device_name.count(",") + 1
+        )
         self.output_blob_names: List[str] = list(self.net.outputs.keys())
 
     @classmethod
@@ -112,13 +115,27 @@ class BaseOpenVINOBackend(BaseBackend):
 
     def batch_predict(self, imgs_bgr: List[np.ndarray]) -> List[object]:
         """Use the network for inference. Main entry point for the capsule."""
+        frame_generator = (f for f in imgs_bgr)
+        while True:
+            requests = []
+            for request in self.exec_net.requests:
+                try:
+                    frame = next(frame_generator)
+                except StopIteration:
+                    if len(requests) == 0:
+                        # No more frames to process
+                        return
+                    # Finish processing the queued request
+                    break
+                feed_dict, resize = self.prepare_inputs(frame)
+                requests.append((request, resize))
+                request.async_infer(feed_dict)
 
-        for frame in imgs_bgr:
-            feed_dict, resize = self.prepare_inputs(frame)
-            inference_result = self.exec_net.infer(feed_dict)
-            results = self.parse_results(inference_result, resize)
-
-            yield results
+            for request, resize in requests:
+                request.wait()
+                inference_result = request.outputs
+                results = self.parse_results(inference_result, resize)
+                yield results
 
     def close(self):
         """Does nothing"""
