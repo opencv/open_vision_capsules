@@ -25,17 +25,24 @@ class Oven:
     running that work in a batched predict function, then returning that
     work to the respective output queues."""
 
-    MAX_BATCH_SIZE = 40
-
     def __init__(self, batch_fn: Callable[[List[Any]], List[Any]],
+                 max_batch_size=40,
                  num_workers: int = 1):
         """Initialize a new oven.
          that the oven will wait between running a batch regardless of batch
-         size
+         size.
+
+        :param batch_fn: A function that takes in a list of inputs and iterates
+        the outputs in the same order as the inputs.
+        :param max_batch_size: The maximum length of list to feed to batch_fn
+        :param num_workers: How many workers should be calling batch_fn
         """
         self.batch_fn = batch_fn
+        self.max_batch_size = max_batch_size
         self._request_queue = Queue()
-        self.workers = [Thread(target=self._worker, daemon=True, name="OvenThread")
+        self.workers = [Thread(target=self._worker,
+                               daemon=True,
+                               name="OvenThread")
                         for _ in range(num_workers)]
 
         # The number of images currently in the work queue or being processed
@@ -105,7 +112,7 @@ class Oven:
                   no longer running (i.e. self._continue == False)
         """
         batch: List[_OvenRequest] = []
-        while len(batch) < self.MAX_BATCH_SIZE:
+        while len(batch) < self.max_batch_size:
             # Check if there's a new request
             try:
                 # Try to get a new request. Have a timeout to check if closing
