@@ -115,49 +115,49 @@ class BaseOpenVINOBackend(BaseBackend):
 
         return {input_blob_name: in_frame}, resize
 
-    def batch_predict_method_2(self, imgs_bgr: List[np.ndarray]) -> List[object]:
+    def batch_predict(self, input_dicts: List[Dict[str, np.ndarray]]) \
+            -> List[object]:
         """Use the network for inference. Main entry point for the capsule."""
-        frame_queue: Deque[np.ndarray] = deque(enumerate(imgs_bgr))
+        inputs_queue: Deque[Dict] = deque(enumerate(input_dicts))
         # free_request_queue = deque(self.exec_net.requests)
-        requests_in_progress: Dict[int, Tuple[int, Resize]] = {}
-        """A queue of (request_id, (frame_id, resize))"""
+        requests_in_progress: Dict[int, int] = {}
+        """A dictionary of {request_id: frame_id}"""
         unsent_results = {}
-        """{frame_id: (results, Resize)}"""
+        """{frame_id: results}"""
         next_frame_id = 0
         """The next frame ID we are awaiting results to send"""
 
         requests = list(enumerate(self.exec_net.requests))
-        print("Batch", len(imgs_bgr))
-        while (len(frame_queue)
+        print("Batch", len(input_dicts))
+        while (len(inputs_queue)
                + len(unsent_results)
                + len(requests_in_progress)):
             self.exec_net.wait(num_requests=1)
             for rid, request in requests:
                 status = request.wait(0)
-                if status == self.StatusCode.INFER_NOT_STARTED:
+                if status == self.InferRequestStatusCode.INFER_NOT_STARTED:
                     # Put another request in the queue, if there are frames
-                    if len(frame_queue):
-                        frame_id, frame = frame_queue.popleft()
-                        feed_dict, resize = self.prepare_inputs(frame)
-                        request.async_infer(feed_dict)
-                        requests_in_progress[rid] = (frame_id, resize)
+                    if len(inputs_queue):
+                        frame_id, input_dict = inputs_queue.popleft()
+                        request.async_infer(input_dict)
+                        requests_in_progress[rid] = frame_id
 
-                if status != self.StatusCode.OK:
+                if status != self.InferRequestStatusCode.OK:
                     continue
 
                 # If this just finished an inference
                 if rid in requests_in_progress:
-                    frame_id, resize = requests_in_progress.pop(rid)
-                    unsent_results[frame_id] = request.outputs, resize
+                    frame_id = requests_in_progress.pop(rid)
+                    unsent_results[frame_id] = request.outputs
+
                 # Put another request in the queue, if there are frames
-                if len(frame_queue):
-                    frame_id, frame = frame_queue.popleft()
-                    feed_dict, resize = self.prepare_inputs(frame)
-                    request.async_infer(feed_dict)
-                    requests_in_progress[rid] = (frame_id, resize)
+                if len(inputs_queue):
+                    frame_id, input_dict = inputs_queue.popleft()
+                    request.async_infer(input_dict)
+                    requests_in_progress[rid] = frame_id
 
             if next_frame_id in unsent_results:
-                yield self.parse_results(*unsent_results.pop(next_frame_id))
+                yield unsent_results.pop(next_frame_id)
                 next_frame_id += 1
 
     def batch_predict_method_1(self, input_dicts: List[Dict[str, np.ndarray]]) \
