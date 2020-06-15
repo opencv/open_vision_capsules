@@ -35,15 +35,19 @@ def get_all_devices() -> List[str]:
                 all_devices = device_lib.list_local_devices()
 
             # Get the device names and remove duplicates, just in case...
-            tf_discovered_devices = {d.name.replace("/device:", "")
-                                     for d in all_devices}
+            tf_discovered_devices = {
+                d.name.replace("/device:", "")
+                for d in all_devices
+            }
 
             # Discover devices using OpenVINO
             try:
                 from openvino.inference_engine import IECore
                 ie = IECore()
-                openvino_discovered_devices = {d for d in ie.available_devices
-                                               if "cpu" not in d.lower()}
+                openvino_discovered_devices = {
+                    d for d in ie.available_devices
+                    if not d.lower().startswith("cpu")
+                }
             except ModuleNotFoundError:
                 logging.warning("OpenVINO library not found. "
                                 "OpenVINO devices will not be discovered. ")
@@ -84,9 +88,10 @@ class DeviceMapper:
         if there are no myriad devices."""
 
         def filter_func(devices):
-            myriad_devices = [d for d in devices if "myriad" in d.lower()]
+            myriad_devices = [d for d in devices
+                              if d.lower().startswith("myriad")]
             if not myriad_devices and cpu_fallback:
                 return ["CPU:0"]
-            return [",".join(myriad_devices)]
+            return myriad_devices
 
         return DeviceMapper(filter_func=filter_func)

@@ -30,7 +30,7 @@ class BaseOpenVINOBackend(BaseBackend):
             extensions
         """
         super().__init__()
-        # Convert from the vcap device naming format openvino format
+        # Convert from the vcap device naming format to openvino format
         device_name = "CPU" if device_name[:4] == "CPU:" else device_name
 
         from openvino.inference_engine import \
@@ -74,7 +74,7 @@ class BaseOpenVINOBackend(BaseBackend):
             device_name=device_name,
             num_requests=n_requests)
 
-        # Pull a couple useful constants out
+        # Pull out a couple useful constants
         self.InferRequestStatusCode = StatusCode
         self.input_blob_names: List[str] = list(self.net.inputs.keys())
         self.output_blob_names: List[str] = list(self.net.outputs.keys())
@@ -83,7 +83,7 @@ class BaseOpenVINOBackend(BaseBackend):
             -> Tuple[OV_INPUT_TYPE, Resize]:
         """A helper method to create an OpenVINO input like {input_name: array}
 
-        This method takes a frame, resizes to fit the network inputs, then
+        This method takes a frame, resizes it to fit the network inputs, then
         returns two things: The input, and the Resize information. The
         Resize information contains all of the operations that were done on
         the frame, allowing users to then map the detections from a resized
@@ -94,7 +94,7 @@ class BaseOpenVINOBackend(BaseBackend):
             used as the frame input. Useful if you still want to use the
             default implementation from a subclass with network with multiple
             inputs
-        :returns: ({input_name: resized_frame}, resize_information)
+        :returns: ({input_name: resized_frame}, Resize)
         """
 
         if not frame_input_name and len(self.net.inputs) > 1:
@@ -165,7 +165,15 @@ class BaseOpenVINOBackend(BaseBackend):
 
     def batch_predict(self, inputs: List[OV_INPUT_TYPE]) \
             -> List[object]:
-        """Use the network for inference. Main entry point for the capsule."""
+        """Use the network for inference.
+
+        This function will receive a list of inputs and process them as
+        efficiently as possible, optimizing for throughput.
+        :param inputs: A list of openvino style inputs {input_name: ndarray}
+        :returns: A generator of the networks outputs, yielding them in the
+        same order as the inputs
+        """
+
         inputs: Deque[Tuple[int, OV_INPUT_TYPE]] = deque(enumerate(inputs))
         """A queue containing tuples of (frame_id, input) for inference"""
         requests_in_progress: Dict[int, int] = {}
@@ -173,29 +181,35 @@ class BaseOpenVINOBackend(BaseBackend):
         unsent_results: Dict[int: Dict] = {}
         """A dictionary of {frame_id: output}, the results not yet yielded"""
         next_frame_id: int = 0
-        """The next frame_id we are awaiting results to send"""
+        """The next frame_id we are awaiting results to send. This guarantees
+        that results are sent in the same order as the inputs."""
 
         requests = list(enumerate(self.exec_net.requests))
+
+        # This loop will end when all inputs have been processed and outputs
+        # have been yielded
         while (len(inputs)
                + len(unsent_results)
                + len(requests_in_progress)):
 
-            # Wait until at least one request is free
+            # Block until at least one request slot is free
             self.exec_net.wait(num_requests=1)
 
             for rid, request in requests:
                 status = request.wait(0)
                 if status == self.InferRequestStatusCode.INFER_NOT_STARTED:
-                    # Put another request in the queue, if there are frames
+                    # Put another request in the queue if there are frames
+                    # not yet sent for processing.
                     if len(inputs):
                         frame_id, input_dict = inputs.popleft()
                         request.async_infer(input_dict)
                         requests_in_progress[rid] = frame_id
 
                 if status != self.InferRequestStatusCode.OK:
+                    # This InferRequest is currently working on a job.
                     continue
 
-                # If this request just finished an inference
+                # This request just finished an inference.
                 if rid in requests_in_progress:
                     frame_id = requests_in_progress.pop(rid)
                     unsent_results[frame_id] = request.outputs
