@@ -152,9 +152,10 @@ class BaseOpenVINOBackend(BaseBackend):
                       [x_max, y_max], [x_min, y_max]]
 
             class_id = round(result[1])
-            res = DetectionNode(name=label_map[class_id],
-                                coords=coords,
-                                extra_data={"confidence": confidence})
+            res = DetectionNode(
+                name=label_map[class_id],
+                coords=coords,
+                extra_data={"detection_confidence": confidence})
             nodes.append(res)
 
         # Convert the coordinate space of the detections from the
