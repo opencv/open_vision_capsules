@@ -20,7 +20,7 @@ from vcap import (
     BoolOption,
     EnumOption)
 from vcap.loading.packaging import CAPSULE_EXTENSION, package_capsule
-from vcap.testing import load_capsule_with_one_gpu
+from vcap.testing import load_capsule_with_one_device
 from vcap.testing.thread_validation import verify_all_threads_closed
 
 NUM_STREAMS = 5
@@ -195,7 +195,7 @@ def perform_capsule_tests(unpackaged_capsule_dir: Union[Path, str],
     package_capsule(unpackaged_capsule_dir, packaged_capsule_path)
 
     with mock.patch.object(BaseCapsule, '__del__') as patched_del:
-        capsule = load_capsule_with_one_gpu(packaged_capsule_path)
+        capsule = load_capsule_with_one_device(packaged_capsule_path)
         _test_capsule_input_output(capsule, image_paths)
 
         # Since the __del__ method was wrapped, mock will not actually call the
