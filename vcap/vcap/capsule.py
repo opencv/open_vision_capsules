@@ -1,3 +1,4 @@
+import logging
 import random
 from abc import ABC, abstractmethod
 from threading import RLock
@@ -77,6 +78,8 @@ class BaseCapsule(ABC):
                           f"discovered on this machine are: {all_devices}."
                 raise EnvironmentError(message)
 
+            logging.info(f"Loading capsule {self.name} "
+                         f"onto devices {', '.join(devices_to_load_to)}")
             self.backends = list(map(load_backend, devices_to_load_to))
 
         # Keep a dictionary for keeping track of different StreamState objs
