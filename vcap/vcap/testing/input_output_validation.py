@@ -94,16 +94,16 @@ def _run_inference_on_images(images: List[np.ndarray], capsule: BaseCapsule):
             as executor:
         for stream_id, image in enumerate(images):
             if capsule.input_type.size == NodeDescription.Size.NONE:
-                node = None
+                input_node = None
 
             elif capsule.input_type.size == NodeDescription.Size.SINGLE:
-                node = make_detection_node(image.shape,
-                                           capsule.input_type)
+                input_node = make_detection_node(image.shape,
+                                                 capsule.input_type)
 
             elif capsule.input_type.size == NodeDescription.Size.ALL:
-                node = [make_detection_node(image.shape,
-                                            capsule.input_type)
-                        for _ in range(random.randint(0, 5))]
+                input_node = [make_detection_node(image.shape,
+                                                  capsule.input_type)
+                              for _ in range(random.randint(0, 5))]
             else:
                 raise NotImplementedError(
                     "The capsule did not have a NodeDescription.Size that was "
@@ -114,43 +114,60 @@ def _run_inference_on_images(images: List[np.ndarray], capsule: BaseCapsule):
             future = executor.submit(
                 capsule.process_frame,
                 frame=image,
-                detection_node=node,
+                detection_node=input_node,
                 options=options,
                 state=capsule.stream_state())
 
-            request_input.append((future, node))
+            request_input.append((future, input_node))
 
-        for future, node in request_input:
+        for future, input_node in request_input:
             # Postprocess the results
             prediction = future.result(timeout=90)
 
             # Verify that the capsule performed correctly
-            if node is not None and not isinstance(node, list):
-                assert capsule.output_type.describes(node)
-            elif prediction is not None:
-                assert all(capsule.output_type.describes(detection_node)
-                           for detection_node in prediction), \
+
+            if isinstance(prediction, DetectionNode):
+                # Validate that what was returned by the capsule was valid
+                assert (capsule.output_type.Size.SINGLE
+                        is NodeDescription.Size.SINGLE)
+                output_nodes = [prediction]
+            elif prediction is None and isinstance(input_node, DetectionNode):
+                # If the capsule didn't output something, then it must have
+                # modified the input node in-place. Validate the changes.
+                assert (capsule.output_type.Size.SINGLE
+                        is NodeDescription.Size.SINGLE)
+                output_nodes = [input_node]
+            elif isinstance(prediction, list):
+                # Validate that every detection node in the list is correct
+                assert capsule.output_type.size is NodeDescription.Size.ALL
+                output_nodes = prediction
+            else:
+                raise RuntimeError(f"Unknown prediction type: {prediction}")
+
+            # Validate every output node against the capsules output_type
+            for output_node in output_nodes:
+                assert capsule.output_type.describes(output_node), \
                     ("Capsule failed to output a prediction that matches "
                      "the NodeDescription it had for it's output type. "
                      f"Prediction: {prediction}")
-            # If this capsule can encode things, verify that the backend
-            # correctly implemented the "distance" function
-            if (capsule.capability.encoded
-                    and prediction is not None
-                    and len(prediction) > 0):
-                # Get one of the predictions
-                pred = prediction[0]
+                # If this capsule can encode things, verify that the backend
+                # correctly implemented the "distance" function
+                if (capsule.capability.encoded
+                        and prediction is not None
+                        and len(prediction) > 0):
+                    # Get one of the predictions
+                    pred = prediction[0]
 
-                # Measure the distance from an encoding to itself
-                # (should be 0)
-                distances = capsule.backends[0].distances(
-                    pred.encoding, np.array([pred.encoding]))
-                assert len(distances) == 1
-                assert distances[0] == 0, \
-                    ("This assertion can be removed in the case that "
-                     "there is some new distance function where two "
-                     "encodings that are equal no longer have a distance "
-                     "of 0. Until that case exists, keep this assertion.")
+                    # Measure the distance from an encoding to itself
+                    # (should be 0)
+                    distances = capsule.backends[0].distances(
+                        pred.encoding, np.array([pred.encoding]))
+                    assert len(distances) == 1
+                    assert distances[0] == 0, \
+                        ("This assertion can be removed in the case that "
+                         "there is some new distance function where two "
+                         "encodings that are equal no longer have a distance "
+                         "of 0. Until that case exists, keep this assertion.")
 
 
 def _test_capsule_input_output(capsule, image_paths):
