@@ -55,8 +55,8 @@ class BaseOpenVINOBackend(BaseBackend):
             self.ie.add_extension(cpu_extension, device_name)
 
         # Find the optimal number of InferRequests for this device
-        supported_metrics = self.ie.get_metric(device_name,
-                                               _SUPPORTED_METRICS)
+        supported_metrics = self.ie.get_metric(
+            device_name, _SUPPORTED_METRICS)
         if _RANGE_FOR_ASYNC_INFER_REQUESTS in supported_metrics:
             _, n_requests, _ = self.ie.get_metric(
                 device_name, _RANGE_FOR_ASYNC_INFER_REQUESTS)
