@@ -53,4 +53,7 @@ sure to run the tests with pytest (from the root of the repo). The tests
 download all the necessary models and images, including the models for the 
 example capsules.
 
+A repository of open source capsules can be found [here][capsule_zoo].
+
 [docs]: https://openvisioncapsules.readthedocs.io/en/latest/
+[capsule_zoo]: https://github.com/aotuai/capsule_zoo
