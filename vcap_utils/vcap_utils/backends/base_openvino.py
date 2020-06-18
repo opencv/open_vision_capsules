@@ -17,17 +17,16 @@ class BaseOpenVINOBackend(BaseBackend):
     def __init__(self, model_xml: bytes,
                  weights_bin: bytes,
                  device_name: str,
-                 cpu_extensions: Optional[List[str]] = None):
+                 ie_core=None):
         """
         :param model_xml: The XML data defining the OpenVINO model architecture
         :param weights_bin: The .bin file data defining the model's weights
-        :param cpu_extensions:
-          None (default): Load extensions from the path specified by the
-            OPENVINO_EXTENSION_PATH environment variable (should be set
-            already to the default path for the extensions)
-          List[str]: A list of paths to the .so file to load
-          An empty list can be passed to bypass the loading of _any_
-            extensions
+        :param ie_core: :
+          None (default): The backend will initialize its own IECore to load
+          the network with.
+          IECore: An initialized openvino.inference_engine.IECore, with any
+          settings already applied. This can be used to apply CPU extensions
+          or load different plugins to the IECore giving it to the backend.
         """
         super().__init__()
         # Convert from the vcap device naming format to openvino format
@@ -36,23 +35,7 @@ class BaseOpenVINOBackend(BaseBackend):
         from openvino.inference_engine import \
             IECore, ExecutableNetwork, IENetwork, StatusCode
 
-        self.ie = IECore()
-
-        if cpu_extensions is None:
-            extension_path = os.environ.get("OPENVINO_EXTENSION_PATH", None)
-
-            if extension_path is not None:
-                # TODO: Make this compatible with other OSs (i.e. Windows
-                #  will use .dlls)
-                cpu_extensions = map(str, Path(extension_path).glob("*.so"))
-            else:
-                logging.warning("Default OpenVINO extensions were "
-                                "requested, but OPENVINO_EXTENSION_PATH "
-                                "is not set. No extensions will be "
-                                "loaded.")
-                cpu_extensions = []
-        for cpu_extension in cpu_extensions:
-            self.ie.add_extension(cpu_extension, device_name)
+        self.ie = ie_core or IECore()
 
         # Find the optimal number of InferRequests for this device
         supported_metrics = self.ie.get_metric(
