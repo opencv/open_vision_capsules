@@ -140,10 +140,8 @@ def _run_inference_on_images(images: List[np.ndarray], capsule: BaseCapsule):
             elif prediction is None and isinstance(input_node, list):
                 # If this capsule accepts size ALL as input, then it must
                 # have modified the detections within the input list
-                assert (capsule.input_type.size
-                        is NodeDescription.Size.ALL)
-                assert (capsule.output_type.size
-                        is NodeDescription.Size.ALL)
+                assert capsule.input_type.size is NodeDescription.Size.ALL
+                assert capsule.output_type.size is NodeDescription.Size.ALL
                 output_nodes = input_node
             elif isinstance(prediction, list):
                 # Validate that every detection node in the list is correct

@@ -171,16 +171,14 @@ class BaseOpenVINOBackend(BaseBackend):
 
         # This loop will end when all inputs have been processed and outputs
         # have been yielded
-        while (len(inputs)
-               + len(unsent_results)
-               + len(requests_in_progress)):
+        while inputs or unsent_results or requests_in_progress:
 
             # Block until at least one request slot is free
             self.exec_net.wait(num_requests=1)
 
             for rid, request in requests:
                 status = request.wait(0)
-                if status == self.InferRequestStatusCode.INFER_NOT_STARTED:
+                if status is self.InferRequestStatusCode.INFER_NOT_STARTED:
                     # Put another request in the queue if there are frames
                     # not yet sent for processing.
                     if len(inputs):
@@ -188,7 +186,7 @@ class BaseOpenVINOBackend(BaseBackend):
                         request.async_infer(input_dict)
                         requests_in_progress[rid] = frame_id
 
-                if status != self.InferRequestStatusCode.OK:
+                if status is not self.InferRequestStatusCode.OK:
                     # This InferRequest is currently working on a job.
                     continue
 
