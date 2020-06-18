@@ -1,3 +1,4 @@
+import logging
 from threading import RLock
 from typing import Callable, List
 
@@ -34,9 +35,25 @@ def get_all_devices() -> List[str]:
                 all_devices = device_lib.list_local_devices()
 
             # Get the device names and remove duplicates, just in case...
-            _devices = {d.name.replace("/device:", "") for d in all_devices}
-            _devices = list(_devices)
+            tf_discovered_devices = {
+                d.name.replace("/device:", "")
+                for d in all_devices
+            }
 
+            # Discover devices using OpenVINO
+            try:
+                from openvino.inference_engine import IECore
+                ie = IECore()
+                openvino_discovered_devices = {
+                    d for d in ie.available_devices
+                    if not d.lower().startswith("cpu")
+                }
+            except ModuleNotFoundError:
+                logging.warning("OpenVINO library not found. "
+                                "OpenVINO devices will not be discovered. ")
+                openvino_discovered_devices = set()
+            _devices = list(tf_discovered_devices
+                            | openvino_discovered_devices)
     return _devices
 
 
@@ -53,7 +70,7 @@ class DeviceMapper:
         def filter_func(devices):
             gpu_devices = [d for d in devices if d.startswith("GPU:")]
             if not gpu_devices and cpu_fallback:
-                return ['CPU:0']
+                return ["CPU:0"]
             return gpu_devices
 
         return DeviceMapper(filter_func=filter_func)
@@ -62,5 +79,19 @@ class DeviceMapper:
     def map_to_single_cpu() -> 'DeviceMapper':
         def filter_func(devices):
             return [next(d for d in devices if d.startswith("CPU:"))]
+
+        return DeviceMapper(filter_func=filter_func)
+
+    @staticmethod
+    def map_to_all_myriad(cpu_fallback=True):
+        """Returns Myriad device. If cpu_fallback=True, it will return CPU:0
+        if there are no myriad devices."""
+
+        def filter_func(devices):
+            myriad_devices = [d for d in devices
+                              if d.lower().startswith("myriad")]
+            if not myriad_devices and cpu_fallback:
+                return ["CPU:0"]
+            return myriad_devices
 
         return DeviceMapper(filter_func=filter_func)
