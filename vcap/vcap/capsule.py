@@ -67,7 +67,7 @@ class BaseCapsule(ABC):
                 device=device)
 
             # Initialize the backends on the capsules requested devices
-            # for example: GPU:0, GPU:1, CPU:0
+            # for example: GPU:0, GPU:1, CPU:0, MYRIAD, HDDL
             all_devices = get_all_devices()
             devices_to_load_to = self.device_mapper.filter_func(all_devices)
 
