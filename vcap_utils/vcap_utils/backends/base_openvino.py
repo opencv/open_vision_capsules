@@ -41,8 +41,11 @@ class BaseOpenVINOBackend(BaseBackend):
         supported_metrics = self.ie.get_metric(
             device_name, _SUPPORTED_METRICS)
         if _RANGE_FOR_ASYNC_INFER_REQUESTS in supported_metrics:
-            _, n_requests, _ = self.ie.get_metric(
+            low, high, _ = self.ie.get_metric(
                 device_name, _RANGE_FOR_ASYNC_INFER_REQUESTS)
+            # Cap the n_requests, because sometimes high_n crashes the system
+            # TODO(Alex): Figure out _why_ hddl crashes when set to 'high'
+            n_requests = max(0, min(low * 2, high))
         else:
             # Use the devices default
             n_requests = 0
