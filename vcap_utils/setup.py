@@ -12,7 +12,7 @@ setup(
     description="Utilities for creating OpenVisionCapsules easily in Python",
     author="Dilili Labs",
     packages=find_namespace_packages(include=["vcap_utils*"]),
-    version="0.2.0" + PRE_RELEASE_SUFFIX,
+    version="0.2.1" + PRE_RELEASE_SUFFIX,
 
     install_requires=[
         "vcap",
