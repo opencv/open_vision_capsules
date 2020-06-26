@@ -1,7 +1,5 @@
-import logging
-import os
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Deque
+from threading import Event
+from typing import Dict, List, Tuple, Deque
 from collections import deque
 
 import numpy as np
@@ -161,52 +159,50 @@ class BaseOpenVINOBackend(BaseBackend):
         """
 
         inputs: Deque[Tuple[int, OV_INPUT_TYPE]] = deque(enumerate(inputs))
-        """A queue containing tuples of (frame_id, input) for inference"""
-        requests_in_progress: Dict[int, int] = {}
-        """A dictionary of {request_id: frame_id} for ongoing requests"""
+        """A deque containing tuples of (frame_id, input) for inference"""
+        requests_in_progress: Dict['InferRequest', int] = {}
+        """A dictionary of {InferRequest: frame_id} for ongoing requests"""
         unsent_results: Dict[int: Dict] = {}
         """A dictionary of {frame_id: output}, the results not yet yielded"""
+        result_ready: Event = Event()
+        """Triggered when any InferRequest finishes processing"""
         next_frame_id: int = 0
         """The next frame_id we are awaiting results to send. This guarantees
         that results are sent in the same order as the inputs."""
 
-        requests = list(enumerate(self.exec_net.requests))
+        def on_result(request):
+            frame_id = requests_in_progress.pop(request)
+            unsent_results[frame_id] = request.outputs
+            result_ready.set()
+
+        requests = list(self.exec_net.requests)
 
         # This loop will end when all inputs have been processed and outputs
         # have been yielded
         while inputs or unsent_results or requests_in_progress:
-
-            # Block until at least one request slot is free
-            self.exec_net.wait(num_requests=1)
-
-            for rid, request in requests:
-                status = request.wait(0)
-                if status is self.InferRequestStatusCode.INFER_NOT_STARTED:
-                    # Put another request in the queue if there are frames
-                    # not yet sent for processing.
-                    if len(inputs):
-                        frame_id, input_dict = inputs.popleft()
-                        request.async_infer(input_dict)
-                        requests_in_progress[rid] = frame_id
-
-                if status is not self.InferRequestStatusCode.OK:
-                    # This InferRequest is currently working on a job.
-                    continue
-
-                # This request just finished an inference.
-                if rid in requests_in_progress:
-                    frame_id = requests_in_progress.pop(rid)
-                    unsent_results[frame_id] = request.outputs
-
-                # Put another request in the queue, if there are frames
-                if len(inputs):
-                    frame_id, input_dict = inputs.popleft()
-                    request.async_infer(input_dict)
-                    requests_in_progress[rid] = frame_id
-
-            if next_frame_id in unsent_results:
+            if len(requests_in_progress):
+                # Block until at least one result is ready
+                result_ready.wait()
+                result_ready.clear()
+            while next_frame_id in unsent_results:
                 yield unsent_results.pop(next_frame_id)
                 next_frame_id += 1
+
+            for request in requests:
+                if not len(inputs):
+                    break
+
+                # For debugging, verify the request is ready to be used
+                status = request.wait(0)
+                assert (status == self.InferRequestStatusCode.INFER_NOT_STARTED
+                        or status == self.InferRequestStatusCode.OK)
+
+                # Put another request in the queue, if there are frames
+                frame_id, input_dict = inputs.popleft()
+                request.async_infer(input_dict)
+                requests_in_progress[request] = frame_id
+                request.set_completion_callback(
+                    lambda *args, request=request: on_result(request))
 
     def close(self):
         """Does nothing"""
