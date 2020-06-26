@@ -193,6 +193,7 @@ class BaseOpenVINOBackend(BaseBackend):
                     break
 
                 # For debugging, verify the request is ready to be used
+                request.wait()
                 status = request.wait(0)
                 assert (status == self.InferRequestStatusCode.INFER_NOT_STARTED
                         or status == self.InferRequestStatusCode.OK)
