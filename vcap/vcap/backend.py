@@ -1,6 +1,6 @@
 import abc
 from queue import Queue
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import numpy as np
 
@@ -16,7 +16,7 @@ class BaseBackend(abc.ABC):
     """
 
     def __init__(self):
-        self.oven = Oven(self.batch_predict)
+        self._oven = Oven(self.batch_predict)
 
     def send_to_batch(self, input_data: Any) -> Queue:
         """Sends the given object to the batch_predict method for processing.
@@ -27,7 +27,16 @@ class BaseBackend(abc.ABC):
         :param input_data: The input object to send to batch_predict
         :return: A queue where results will be stored
         """
-        return self.oven.submit(input_data)
+        return self._oven.submit(input_data)
+
+    @property
+    def workload(self) -> Union[float, int]:
+        """Returns a unit representing the amount of 'work' being processed
+        This value is comparable only by backends of the same capsule, and
+        is intended to give the scheduler the ability to pick the least busy
+        backend.
+        """
+        return self._oven.total_imgs_in_pipeline
 
     @abc.abstractmethod
     def process_frame(self,
@@ -55,4 +64,4 @@ class BaseBackend(abc.ABC):
     @abc.abstractmethod
     def close(self) -> None:
         """De-initializes the backend."""
-        pass
+        self._oven.close()

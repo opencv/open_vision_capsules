@@ -115,7 +115,7 @@ class BaseCapsule(ABC):
             random.shuffle(self.backends)
             laziest_backend: BaseBackend \
                 = min(self.backends,
-                      key=lambda backend: backend.oven.total_imgs_in_pipeline)
+                      key=lambda backend: backend.workload)
 
         return laziest_backend.process_frame(
             frame, detection_node, options, state)
@@ -141,7 +141,6 @@ class BaseCapsule(ABC):
             with self.backends_lock:
                 for backend in self.backends:
                     backend.close()
-                    backend.oven.close()
                 self.backends = None
 
     @property
