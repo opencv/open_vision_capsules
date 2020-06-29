@@ -207,4 +207,9 @@ class BaseOpenVINOBackend(BaseBackend):
 
     def close(self):
         """Does nothing"""
-        pass
+        # Since there's no way to tell OpenVINO to close sockets to HDDL
+        # (or other plugins), dereferencing everything is the safest way
+        # to go. Without this, OpenVINO seems to crash the HDDL daemon.
+        self.ie = None
+        self.net = None
+        self.exec_net = None
