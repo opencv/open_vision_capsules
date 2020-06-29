@@ -54,7 +54,7 @@ def _rpc_server(
 
     def handle_request(request: RpcRequest):
         try:
-            result = getattr(backend, request.function)(
+            result = getattr(backend, request.function)(  # noqa: F821
                 *request.args, **request.kwargs)
             exception = None
         except BaseException as e:
