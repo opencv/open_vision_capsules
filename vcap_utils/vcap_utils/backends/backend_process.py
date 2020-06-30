@@ -71,7 +71,7 @@ def _rpc_server(
             request: RpcRequest = incoming.get(timeout=0.1)
         except queue.Empty:
             continue
-        pool.apply_async(lambda: handle_request(request))
+        pool.apply_async(handle_request, args=(request,))
     pool.close()
     pool.join()
     del backend
