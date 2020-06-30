@@ -14,14 +14,14 @@ from vcap import BaseBackend, DETECTION_NODE_TYPE, OPTION_TYPE, BaseStreamState
 
 
 class RpcRequest(NamedTuple):
-    request_id: UUID
+    request_id: str
     function: str
     args: Tuple[Any]
     kwargs: Dict[str, Any]
 
 
 class RpcResponse(NamedTuple):
-    request_id: UUID
+    request_id: str
     result: Any
     exception: BaseException
 
@@ -94,6 +94,11 @@ class BackendProcess(BaseBackend):
         self._incoming = multiprocessing.Queue()
         self._outgoing = multiprocessing.Queue()
         self._shutdown = multiprocessing.Event()
+        self._futures_lock = RLock()
+        self._futures: Dict[UUID, Future] = {}
+        """Keep track of result queues in a dict of request_id: Future """
+
+        # Spin up the server process and verify __init__ didn't fail
         self._process = multiprocessing.Process(
             target=_rpc_server,
             daemon=True,
@@ -107,22 +112,17 @@ class BackendProcess(BaseBackend):
                 "args": args,
                 "kwargs": kwargs
             })
-        self._rpc_thread = threading.Thread(
-            target=self._rpc_client,
-            name="RpcClientThread")
-
         # Start the process and wait for startup to finish (or fail)
         self._process.start()
         exception = self._incoming.get()
         if exception:
             raise exception
 
-        # Start the consumer thread
+        # Start the client thread
+        self._rpc_thread = threading.Thread(
+            target=self._rpc_client,
+            name="RpcClientThread")
         self._rpc_thread.start()
-
-        # Keep track of result queues in a dict of request_id: Future
-        self._futures_lock = RLock()
-        self._futures: Dict[UUID, Future] = {}
 
     @property
     def workload(self) -> int:
@@ -155,8 +155,9 @@ class BackendProcess(BaseBackend):
             function=function,
             args=args,
             kwargs=kwargs,
-            request_id=uuid4()
+            request_id=uuid4().hex
         )
+
         future = Future()
         with self._futures_lock:
             self._futures[request.request_id] = future
