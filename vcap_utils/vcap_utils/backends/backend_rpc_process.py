@@ -7,10 +7,8 @@ import gc
 from uuid import uuid4, UUID
 from threading import RLock
 from typing import NamedTuple
-from socketserver import BaseRequestHandler
 
-import numpy as np
-from vcap import BaseBackend, DETECTION_NODE_TYPE, OPTION_TYPE, BaseStreamState
+from vcap import BaseBackend, DETECTION_NODE_TYPE
 
 
 class RpcRequest(NamedTuple):
@@ -78,7 +76,7 @@ def _rpc_server(
     gc.collect()
 
 
-class BackendProcess(BaseBackend):
+class BackendRpcProcess(BaseBackend):
     """Runs a backend inside of another process.
     This functionality is very experimental! It may not work for all cases
     or frameworks.
