@@ -27,29 +27,37 @@ class Option(ABC):
 
     @abstractmethod
     def check(self, value):
+        """Checks the given value to see if it fits this option.
+
+        :param value: The value to check
+        :raises ValueError: If the value does not fit the option
+        """
         pass
 
 
 class FloatOption(Option):
     """A capsule option that holds a floating point value with defined
     boundaries.
-
-    Can have min_val or max_val be None"""
+    """
 
     def __init__(self, *, default: float,
                  min_val: Optional[float],
                  max_val: Optional[float],
                  description: Optional[str] = None):
+        """
+        :param default: The default value of this option
+        :param min_val: The minimum allowed value for this option, inclusive,
+            or None for no lower limit
+        :param max_val: The maximum allowed value for this option, inclusive,
+            or None for no upper limit
+        :param description: The description for this option
+        """
         self.min_val = min_val
         self.max_val = max_val
 
         super().__init__(default=default, description=description)
 
     def check(self, value):
-        """Checks the given value to see if it fits this option. Raises a
-        ValueError in case of issues.
-        :param value: The value to check
-        """
         if not isinstance(value, float):
             raise ValueError(f"Expecting type float, got {type(value)}")
         _check_number_range(value, self.min_val, self.max_val)
@@ -57,24 +65,26 @@ class FloatOption(Option):
 
 class IntOption(Option):
     """A capsule option that holds an integer value.
-
-    Can have min_val and max_val be None
     """
 
     def __init__(self, *, default: int,
                  min_val: Optional[int],
                  max_val: Optional[int],
                  description: Optional[str] = None):
+        """
+        :param default: The default value of this option
+        :param min_val: The minimum allowed value for this option, inclusive,
+            or None for no lower limit
+        :param max_val: The maximum allowed value for this option, inclusive,
+            or None for no upper limit
+        :param description: The description for this option
+        """
         self.min_val = min_val
         self.max_val = max_val
 
         super().__init__(default=default, description=description)
 
     def check(self, value):
-        """Checks the given value to see if it fits this option. Raises a
-        ValueError in case of issues.
-        :param value: The value to check
-        """
         if not isinstance(value, int):
             raise ValueError(f"Expecting type int, got {type(value)}")
         _check_number_range(value, self.min_val, self.max_val)
@@ -87,6 +97,11 @@ class EnumOption(Option):
 
     def __init__(self, *, default: str, choices: List[str],
                  description: Optional[str] = None):
+        """
+        :param default: The default value of this option
+        :param choices: A list of all valid values for this option
+        :param description: The description for this option
+        """
         assert len(choices) > 0
 
         self.choices = choices
@@ -94,10 +109,6 @@ class EnumOption(Option):
         super().__init__(default=default, description=description)
 
     def check(self, value):
-        """Checks the given value to see if it fits this option. Raises a
-        ValueError in case of issues.
-        :param value: The value to check
-        """
         if not isinstance(value, str):
             raise ValueError(f"Expecting type float, got {type(value)}")
 
@@ -110,6 +121,10 @@ class BoolOption(Option):
 
     def __init__(self, *, default: bool,
                  description: Optional[str] = None):
+        """
+        :param default: The default value of this option
+        :param description: The description for this option
+        """
         super().__init__(default=default, description=description)
 
     def check(self, value):

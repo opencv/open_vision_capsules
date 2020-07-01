@@ -51,9 +51,11 @@ class BoundingBox:
 
 
 class DetectionNode:
-    """A bounding box detection and any corresponding information about that
-    detection. DetectionNodes may form a tree with children and parent nodes to
-    express that a detection is "part" of another detection.
+    """Capsules use DetectionNode objects to communicate results to other
+    capsules and the application itself. A DetectionNode contains information
+    on a detection in the current frame. Capsules that detect objects in a
+    frame create new DetectionNodes. Capsules that discover attributes about
+    detections add data to existing DetectionNodes.
     """
 
     def __init__(self, *, name: str,
@@ -64,20 +66,28 @@ class DetectionNode:
                  track_id: Optional[UUID] = None,
                  extra_data: Dict[str, object] = None):
         """
-        :param name: The class name, describing what the detection is of, like
-            "person"
-        :param coords: A list of coordinates defining a shape
-        :param attributes: A dictionary of {"category": "value"} pairs.
-            ie, {"Gender": "Male", "Age": "Young}
+        :param name: The detection class name. This describes what the
+            detection is. A detection of a person would have a name="person".
+        :param coords: A list of coordinates defining the detection as a
+            polygon in-frame. Comes in the format ``[[x,y], [x,y]...]``.
+        :param attributes: A key-value store where the key is the type of
+            attribute being described and the value is the attribute's value.
+            For instance, a capsule that detects gender might add a "gender"
+            key to this dict, with a value of either "masculine" or "feminine".
         :param children: Child DetectionNodes that are a "part" of the parent,
             for instance, a head DetectionNode might be a child of a person
             DetectionNode
-        :param encoding: The encoding for this detection, if any
+        :param encoding: An array of float values that represent an encoding of
+            the detection. This can be used to recognize specific instances of
+            a class. For instance, given a picture of person’s face, the
+            encoding of that face and the encodings of future faces can be
+            compared to find that person in the future.
         :param track_id: If this object is tracked, this is the unique
-        identifier for this detection node that ties it to other detection nodes
-        in future and past frames (within the same stream).
-        :param extra_data: Any other domain-specific data that describe
-            this detection. These values are not used for computation.
+             identifier for this detection node that ties it to other detection
+             nodes in future and past frames within the same stream.
+        :param extra_data: A dict of miscellaneous data. This data is provided
+            directly to clients without modification, so it’s a good way to
+            pass extra information from a capsule to other applications.
         """
         self.class_name = name
         self.coords = coords
