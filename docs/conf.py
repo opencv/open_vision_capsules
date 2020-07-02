@@ -46,4 +46,4 @@ autoclass_content = "both"
 html_theme = "sphinx_rtd_theme"
 
 # Mock out any third-party imports
-autodoc_mock_imports = []
+autodoc_mock_imports = ["numpy", "tensorflow", "cv2", "Cryptodome"]
