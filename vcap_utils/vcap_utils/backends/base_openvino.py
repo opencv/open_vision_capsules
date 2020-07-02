@@ -160,7 +160,7 @@ class BaseOpenVINOBackend(BaseBackend):
 
         inputs: Deque[Tuple[int, OV_INPUT_TYPE]] = deque(enumerate(inputs))
         """A deque containing tuples of (frame_id, input) for inference"""
-        requests_in_progress: Dict['InferRequest', int] = {}
+        requests_in_progress: Dict['InferRequest', int] = {}  # noqa: F821
         """A dictionary of {InferRequest: frame_id} for ongoing requests"""
         unsent_results: Dict[int: Dict] = {}
         """A dictionary of {frame_id: output}, the results not yet yielded"""
