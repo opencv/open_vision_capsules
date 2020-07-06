@@ -38,7 +38,7 @@ class NodeDescription:
     A capsule that detects dogs and takes no existing input would look like
     this.
 
-    >>> input_type = NodeDescription(size=NodeDescription.Size.SINGLE)
+    >>> input_type = NodeDescription(size=NodeDescription.Size.NONE)
     >>> output_type = NodeDescription(
     >>>                 size=NodeDescription.Size.ALL,
     >>>                 detections=["dog"])
