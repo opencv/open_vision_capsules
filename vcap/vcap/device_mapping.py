@@ -83,15 +83,43 @@ class DeviceMapper:
         return DeviceMapper(filter_func=filter_func)
 
     @staticmethod
-    def map_to_all_myriad(cpu_fallback=True):
-        """Returns Myriad device. If cpu_fallback=True, it will return CPU:0
-        if there are no myriad devices."""
+    def map_to_openvino_devices():
+        """Intelligently load capsules onto available OpenVINO compatible
+        devices.
+        Here are the cases:
+
+        ['CPU:0', 'MYRIAD'] => ['CPU:0']
+            Because MYRIAD devices don't support multiple capsules,
+            loading directly onto them is disabled.
+        ['CPU:0', 'MYRIAD', 'HDDL'] =>  ['HDDL']
+            Because there is a MYRIAD device available, and HDDL is showing up,
+            that means that the HDDL drivers are installed and there is a
+            valid MYRIAD device to load onto. Since HDDL supports loading
+            multiple capsules, it is thus selected.
+        ['CPU:0', 'HDDL'] => ['CPU:0']
+            Because there is no MYRIAD device available, loading onto HDDL
+            doesn't make any sense.
+        ['CPU:0'] => ['CPU:0']
+            Always load onto CPU.
+        """
 
         def filter_func(devices):
             myriad_devices = [d for d in devices
                               if d.lower().startswith("myriad")]
-            if not myriad_devices and cpu_fallback:
-                return ["CPU:0"]
-            return myriad_devices
+            hddl_device = [d for d in devices
+                           if d.lower().startswith("hddl")]
+            if myriad_devices and hddl_device:
+                # Since there are myriad devices available and the HDDL driver
+                # is installed, load onto CPU and HDDL
+                return ["CPU:0"] + hddl_device
+            if not myriad_devices and hddl_device:
+                logging.warning("HDDL drivers are correctly configured, but "
+                                "no MYRIAD devices were found to load onto. "
+                                "Loading onto CPU only.")
+            if myriad_devices and not hddl_device:
+                logging.warning("Myriad device found, but no HDDL drivers "
+                                "are installed on the host computer. "
+                                "Loading onto CPU only.")
+            return ["CPU:0"]
 
         return DeviceMapper(filter_func=filter_func)

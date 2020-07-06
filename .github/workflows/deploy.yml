@@ -1,6 +1,6 @@
 name: Publish packages
 
-on: [ push ]
+on: [push]
 
 jobs:
   deploy:
