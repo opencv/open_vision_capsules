@@ -45,7 +45,7 @@ class BaseBackend(abc.ABC):
         ``batch_predict`` method is overridden.
 
         :param frame: A numpy array representing a frame. It is of shape
-            (height, width, channel) and the frames come in BGR order.
+            (height, width, num_channels) and the frames come in BGR order.
         :param detection_node: The detection_node type as specified by the
             ``input_type``
         :param options: A dictionary of key (string) value pairs. The key is
@@ -75,7 +75,8 @@ class BaseBackend(abc.ABC):
 
     @abc.abstractmethod
     def close(self) -> None:
-        """De-initializes the backend. Once this method is called, the backend
-        will no longer be in use.
+        """De-initializes the backend. This is called when the capsule is being
+        unloaded. The backend will stop receiving frames before this method is
+        called, and will not receive frames again.
         """
         pass

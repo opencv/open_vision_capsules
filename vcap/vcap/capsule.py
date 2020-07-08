@@ -165,7 +165,9 @@ class BaseCapsule(ABC):
         By convention, the capsule's name is prefixed by some short description
         of the role it plays ("detector", "recognizer", etc) followed by the
         kind of data it relates to ("person", "face", etc) and, if necessary,
-        some differentiating factor ("fast", "close_up", "retail", etc).
+        some differentiating factor ("fast", "close_up", "retail", etc). For
+        example, a face detector that is optimized for quick inference would
+        be named "detector_face_fast".
         """
         raise NotImplementedError
 
