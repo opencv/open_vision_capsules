@@ -112,7 +112,7 @@ class DeviceMapper:
 
         def filter_func(devices):
             allowed_device_type = os.environ.get("OPENVINO_ALLOWABLE_DEVICES",
-                                                 None).lower()
+                                                 "").lower()
 
             if allowed_device_type in ("myriad", "hddl"):
                 allowed_devices = [
