@@ -7,9 +7,13 @@ DETECTION_NODE_TYPE = Union[None, DetectionNode, List[DetectionNode]]
 
 
 class NodeDescription:
-    """Describes required aspects of a DetectionNode. This is used to specify
-    what kind of DetectionNodes a capsule takes as input and what kind of
-    DetectionNodes the capsule outputs.
+    """Capsules use NodeDescriptions to describe the kinds of DetectionNodes
+    they take in as input and produce as output.
+
+    A capsule may take a DetectionNode as input and produce zero or more
+    DetectionNodes as output. Capsules define what information inputted
+    DetectionNodes must have and what information outputted detection nodes
+    will have using NodeDescriptions.
 
     For example, a capsule that encodes people and face detections would use
     NodeDescriptions to define its inputs and outputs like so:
@@ -34,7 +38,7 @@ class NodeDescription:
     A capsule that detects dogs and takes no existing input would look like
     this.
 
-    >>> input_type = NodeDescription(size=NodeDescription.Size.SINGLE)
+    >>> input_type = NodeDescription(size=NodeDescription.Size.NONE)
     >>> output_type = NodeDescription(
     >>>                 size=NodeDescription.Size.ALL,
     >>>                 detections=["dog"])
@@ -42,14 +46,19 @@ class NodeDescription:
 
     class Size(Enum):
         NONE = 1
-        """A NodeDescription that does not take in or produce DetectionNodes.
+        """The capsule does not take any input. This is common for capsules
+        that detect objects in frame. These algorithms usually only need the
+        video frame.
         """
         SINGLE = 2
-        """A NodeDescription that takes in or produces a single DetectionNode.
+        """The capsule takes a single DetectionNode object. This is common for
+        capsules that find attributes for objects that have been detected by
+        other capsules.
         """
         ALL = 3
-        """A NodeDescription that takes in all available DetectionNodes or
-        produces any number of DetectionNodes.
+        """The capsule takes all available DetectionNodes that fit the
+        capsule's input requirements. This is common for capsules that track
+        objects between video frames.
         """
 
     def __init__(self, *,
@@ -68,7 +77,7 @@ class NodeDescription:
         :param attributes: A dict whose key is the classification type and
             whose value is a list of possible attributes. A node that meets
             this description must have a classification for each classification
-            type
+            type.
         :param encoded: If true, the DetectionNode must be encoded to meet this
             description
         :param tracked: If true, the DetectionNode is being tracked
