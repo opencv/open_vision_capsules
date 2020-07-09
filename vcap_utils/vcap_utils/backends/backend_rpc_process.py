@@ -13,15 +13,24 @@ from vcap import BaseBackend, DETECTION_NODE_TYPE
 
 class RpcRequest(NamedTuple):
     request_id: str
+    """A string UUID"""
     function: str
+    """The function to run"""
     args: Tuple[Any]
+    """Arguments for the function"""
     kwargs: Dict[str, Any]
+    """Keyword arguments for the function"""
 
 
 class RpcResponse(NamedTuple):
     request_id: str
+    """A string UUID corresponding to the RpcRequest"""
     result: Any
+    """The result of the function that was run"""
     exception: BaseException
+    """If the function threw an exception, this will hold the exception. 
+    In the case when the function failed with an exceptio, RpcResponse.result
+    will be None."""
 
 
 def _rpc_server(
@@ -35,7 +44,7 @@ def _rpc_server(
     :param outgoing: Returns RpcResponses here
     :param shutdown: When set, this signals that the server should shut down.
     :param num_workers: How many internal threads should exist for processing
-    incoming requests.
+    incoming RpcRequests.
     :param backend_class: The backend to initialize
     :param args: *args for the backend_class __init__
     :param kwargs: *kwargs for the backend_class __init__
@@ -73,6 +82,10 @@ def _rpc_server(
     pool.close()
     pool.join()
     del backend
+    # Make sure any __del__'s gets called, potentially freeing up
+    # sockets that the backend may have been connected to. For example,
+    # the OpenVINO HDDL plugin connects to a socket, and releases it
+    # upon garbage collection.
     gc.collect()
 
 
@@ -93,10 +106,10 @@ class BackendRpcProcess(BaseBackend):
         self._outgoing = multiprocessing.Queue()
         self._shutdown = multiprocessing.Event()
         self._futures_lock = RLock()
-        self._futures: Dict[UUID, Future] = {}
-        """Keep track of result queues in a dict of request_id: Future """
+        self._futures: Dict[str, Future] = {}
+        """Keep track of ongoing requests in a dict of request_id: Future """
 
-        # Spin up the server process and verify __init__ didn't fail
+        # Spin up the server process
         self._process = multiprocessing.Process(
             target=_rpc_server,
             daemon=True,
@@ -110,8 +123,8 @@ class BackendRpcProcess(BaseBackend):
                 "args": args,
                 "kwargs": kwargs
             })
-        # Start the process and wait for startup to finish (or fail)
         self._process.start()
+        # Wait for success or failure of the Backend initialization
         exception = self._incoming.get()
         if exception:
             raise exception
@@ -124,13 +137,15 @@ class BackendRpcProcess(BaseBackend):
 
     @property
     def workload(self) -> int:
+        # TODO: Use RPC to request the underlying Backends
+        #       'workload' implementation
         with self._futures_lock:
             return len(self._futures)
 
     def _rpc_client(self):
         """This is the dedicated thread for receiving and routing results
         from the remote backend. It receives incoming RpcResponses and
-        routes them to the relevant Future objects."""
+        routes results or exceptions to the relevant Future objects."""
         while not self._shutdown.is_set() or self._incoming.qsize():
             try:
                 response: RpcResponse = self._incoming.get(timeout=0.1)
@@ -171,7 +186,9 @@ class BackendRpcProcess(BaseBackend):
         raise NotImplementedError()
 
     def close(self) -> None:
+        # Close the underlying backend
         self._rpc_call("close")
+        # Close the server process and the client thread
         self._shutdown.set()
         self._process.join()
         self._rpc_thread.join()
