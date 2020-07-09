@@ -1,3 +1,4 @@
+import os
 import logging
 from threading import RLock
 from typing import Callable, List
@@ -86,40 +87,43 @@ class DeviceMapper:
     def map_to_openvino_devices():
         """Intelligently load capsules onto available OpenVINO compatible
         devices.
-        Here are the cases:
 
-        ['CPU:0', 'MYRIAD'] => ['CPU:0']
-            Because MYRIAD devices don't support multiple capsules,
-            loading directly onto them is disabled.
-        ['CPU:0', 'MYRIAD', 'HDDL'] =>  ['HDDL']
-            Because there is a MYRIAD device available, and HDDL is showing up,
-            that means that the HDDL drivers are installed and there is a
-            valid MYRIAD device to load onto. Since HDDL supports loading
-            multiple capsules, it is thus selected.
-        ['CPU:0', 'HDDL'] => ['CPU:0']
-            Because there is no MYRIAD device available, loading onto HDDL
-            doesn't make any sense.
+        Since support for OpenVINO devices is very experimental, there is a
+        temporary environment variable being added to whitelist devices
+        specifically. This variable will be deprecated and removed after a
+        short testing period.
+
+        OPENVINO_ALLOWABLE_DEVICES can be
+            "", "HDDL", or "MYRIAD"
+        The device "CPU" is _always_ allowed and always loaded onto.
+
+        The logic is as follows: IECore().available_devices is used to scan
+        for devices, then the following logic is used to load onto devices,
+        as long as the devices are whitelisted by OPENVINO_ALLOWABLE_DEVICES
+
+        Here are the cases:
+        ['CPU:0', 'MYRIAD', ...] => ['CPU:0', 'MYRIAD']
+            If MYRIAD is whitelisted. Else, it will return ["CPU:0"]
+        ['CPU:0', 'HDDL', ...] =>  ['CPU:0', 'HDDL']
+            If HDDL is whitelisted. Else, it will return ["CPU:0"]
         ['CPU:0'] => ['CPU:0']
             Always load onto CPU.
         """
 
         def filter_func(devices):
-            myriad_devices = [d for d in devices
-                              if d.lower().startswith("myriad")]
-            hddl_device = [d for d in devices
-                           if d.lower().startswith("hddl")]
-            if myriad_devices and hddl_device:
-                # Since there are myriad devices available and the HDDL driver
-                # is installed, load onto CPU and HDDL
-                return ["CPU:0"] + hddl_device
-            if not myriad_devices and hddl_device:
-                logging.warning("HDDL drivers are correctly configured, but "
-                                "no MYRIAD devices were found to load onto. "
-                                "Loading onto CPU only.")
-            if myriad_devices and not hddl_device:
-                logging.warning("Myriad device found, but no HDDL drivers "
-                                "are installed on the host computer. "
-                                "Loading onto CPU only.")
-            return ["CPU:0"]
+            allowed_device_type = os.environ.get("OPENVINO_ALLOWABLE_DEVICES",
+                                                 None).lower()
+
+            if allowed_device_type in ("myriad", "hddl"):
+                allowed_devices = [
+                    d for d in devices
+                    if d.lower().startswith(allowed_device_type)]
+            else:
+                allowed_devices = []
+                logging.warning(
+                    "Invalid value for OPENVINO_ALLOWABLE_DEVICES. "
+                    f"Loading onto CPU only. Value: {allowed_device_type}")
+
+            return ["CPU:0"] + allowed_devices
 
         return DeviceMapper(filter_func=filter_func)
