@@ -1,3 +1,5 @@
+.. _`The Capsule Class`:
+
 #################
 The Capsule Class
 #################
