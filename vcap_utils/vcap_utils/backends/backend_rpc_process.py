@@ -180,6 +180,9 @@ class BackendRpcProcess(BaseBackend):
     def process_frame(self, *args, **kwargs) -> DETECTION_NODE_TYPE:
         return self._rpc_call("process_frame", *args, **kwargs)
 
+    def distances(self, *args, **kwargs):
+        return self._rpc_call("distances", *args, **kwargs)
+
     def batch_predict(self, *args, **kwargs):
         """This function is implemented on the backend running on the backend
         process. It shouldn't be called from the parent process."""
