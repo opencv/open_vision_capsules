@@ -61,7 +61,8 @@ class BaseBackend(abc.ABC):
             "the batch_predict method defined. Did you call send_to_batch on "
             "a backend that does not override batch_predict?")
 
-    @abc.abstractmethod
     def close(self) -> None:
-        """De-initializes the backend."""
+        """De-initializes the backend. This method should be subclassed
+        by any Backend that needs to release resources or close other
+        threads."""
         self._oven.close()
