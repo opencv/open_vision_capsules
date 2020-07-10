@@ -93,6 +93,13 @@ class BackendRpcProcess(BaseBackend):
     """Runs a backend inside of another process.
     This functionality is very experimental! It may not work for all cases
     or frameworks.
+
+    NOTE! This backend wrapper currently can only be used on capsules
+    that do not modify detection nodes in-place. Most if not all detectors
+    should work fine.
+        This potentially can be fixed in the future by diffing the
+    node.__dict__ of the incoming vs outgoing node and making the appropriate
+    additions.
     """
 
     def __init__(self, backend_class: Type[BaseBackend], *args, **kwargs):
