@@ -85,5 +85,9 @@ class BaseBackend(abc.ABC):
     def close(self) -> None:
         """De-initializes the backend. This is called when the capsule is being
         unloaded. This method should be subclassed by any Backend that needs
-        to release resources or close other threads."""
+        to release resources or close other threads.
+
+        The backend will stop receiving frames before this method is
+        called, and will not receive frames again.
+        """
         self._oven.close()

@@ -102,8 +102,7 @@ class BaseCapsule(ABC):
             # Note the inplace shuffle, but this should be okay, esp. w/ lock
             random.shuffle(self.backends)
             laziest_backend: BaseBackend \
-                = min(self.backends,
-                      key=lambda backend: backend.workload)
+                = min(self.backends, key=lambda backend: backend.workload)
 
         return laziest_backend.process_frame(
             frame, detection_node, options, state)
