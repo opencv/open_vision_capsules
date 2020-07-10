@@ -18,20 +18,9 @@ class BaseCapsule(ABC):
     """An abstract base class that all capsules must subclass. Defines the
     interface that capsules are expected to implement.
 
-    A capsule is a zipped and encrypted collection of files and configuration
-    information. It represents a single algorithm with a specific set
-    of functionality, like an inception_resnet_v2 behavior classification
-    model.
-
     A class that subclasses from this class is expected to be defined in a
     capsule.py file in a capsule.
     """
-
-    stream_state = BaseStreamState
-    """This attribute is the basic 'stream_state object that is initialized
-    for every new stream that a capsule is run on, and de-initialized when that
-    stream goes away. It is intended to be overridden by capsules that have 
-    stateful operations across a single stream."""
 
     backends: Optional[List[BaseBackend]] = None
     """A list of the backends the capsule has initialized"""
@@ -40,8 +29,7 @@ class BaseCapsule(ABC):
     """Lock the list of backends whenever it's being accessed"""
 
     def __init__(self, capsule_files: Dict[str, bytes], inference_mode=True):
-        """Load a capsule file.
-
+        """
         :param capsule_files: A dict of {"file_name": FILE_BYTES} of the files
             that were found and loaded in the capsule
         :param inference_mode: If True, the model will be loaded and the
@@ -134,9 +122,9 @@ class BaseCapsule(ABC):
                 del self._stream_states[stream_id]
 
     def close(self) -> None:
-        """This method MUST close the oven first, then de-initialize the
-        backend so as to clear up memory.
-        """
+        """Stops the capsule, de-initializing all backends."""
+        # This method MUST close the oven first, then de-initialize the
+        # backend so as to clear up memory.
         if self.backends is not None:
             with self.backends_lock:
                 for backend in self.backends:
@@ -170,7 +158,16 @@ class BaseCapsule(ABC):
     # These things are to be filled in by a subclassing capsule
     @property
     def name(self) -> str:
-        """A name to uniquely identify the capsule."""
+        """The name of the capsule. This value uniquely defines the capsule and
+        cannot be shared by other capsules.
+
+        By convention, the capsule's name is prefixed by some short description
+        of the role it plays ("detector", "recognizer", etc) followed by the
+        kind of data it relates to ("person", "face", etc) and, if necessary,
+        some differentiating factor ("fast", "close_up", "retail", etc). For
+        example, a face detector that is optimized for quick inference would
+        be named "detector_face_fast".
+        """
         raise NotImplementedError
 
     @property
@@ -200,34 +197,49 @@ class BaseCapsule(ABC):
 
     @property
     def device_mapper(self) -> DeviceMapper:
+        """A device mapper contains a single field, ``filter_func``, which is a
+        function that takes in a list of all available device strings and
+        returns a list of device strings that are compatible with this capsule.
+        """
         return DeviceMapper.map_to_all_gpus()
 
     @staticmethod
     @abstractmethod
     def backend_loader(capsule_files: Dict[str, bytes], device: str) \
             -> "BaseBackend":
-        """Initializes the capsule and returns the initialized Backend.
+        """A function that creates a backend for this capsule.
 
-        :param capsule_files: A dict of
-            filename: file_bytes of the files within the capsule's root
-                      directory.
-        :param device: A device, in the format of "GPU:0", "CPU:2"
-        The devices passed into the capsule is decided by the
-        Capsule.device_mapper
+        :param capsule_files: Provides access to all files in the capsule. The
+            keys are file names and the values are ``bytes``.
+        :param device: A string specifying the device that this backend should
+            use. For example, the first GPU device is specified as "GPU:0".
         """
         raise NotImplementedError
 
     @property
     def input_type(self) -> NodeDescription:
-        """Describes the type of node this capsule expects to work with."""
+        """Describes the types of DetectionNodes that this capsule takes in as
+        input.
+        """
         raise NotImplementedError
 
     @property
     def output_type(self) -> NodeDescription:
-        """Describes the type of node this capsule will output."""
+        """Describes the types of DetectionNodes that this capsule produces as
+        output.
+        """
         raise NotImplementedError
 
     @property
     def options(self) -> Dict[str, Option]:
         """A list of zero or more options that can be configured at runtime."""
         return {}
+
+    @property
+    def stream_state(self):
+        """(Optional) An instance of this object will be created for every new
+        video stream that a capsule is run on, and de-initialized when that
+        stream is deleted. It is intended to be overridden by capsules that
+        have stateful operations across a single stream.
+        """
+        return BaseStreamState

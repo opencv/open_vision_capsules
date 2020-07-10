@@ -1,11 +1,18 @@
+.. _`Stream State`:
+
+############
+Stream State
+############
+
+
 It is sometimes desirable to carry state throughout the lifetime of an entire
 video stream, rather than on a frame-by-frame basis. This is where StreamState
 comes in.
 
-If the `stream_state` field of the capsule's Capsule class is set, the
-`process_frame` method for your capsule's backend will be passed an instance of
-the provided class. Any state that should exist for the duration of the video
-stream may be saved here.
+If the ``stream_state`` field of the capsule's Capsule class is set, the
+``process_frame`` method for your capsule's backend will be passed an instance
+of the provided class. Any state that should exist for the duration of the
+videostream may be saved here.
 
 This is commonly used by capsules that track objects between video frames.
 Information on previous detections can be stored in the StreamState object and
