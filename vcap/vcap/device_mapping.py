@@ -85,7 +85,7 @@ class DeviceMapper:
 
     @staticmethod
     def map_to_openvino_devices():
-        """Intelligently load capsules onto available OpenVINO compatible
+        """Intelligently load capsules onto available OpenVINO-compatible
         devices.
 
         Since support for OpenVINO devices is very experimental, there is a

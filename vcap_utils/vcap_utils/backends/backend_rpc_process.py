@@ -8,6 +8,8 @@ from uuid import uuid4, UUID
 from threading import RLock
 from typing import NamedTuple
 
+import numpy as np
+
 from vcap import BaseBackend, DETECTION_NODE_TYPE
 
 
@@ -97,7 +99,7 @@ class BackendRpcProcess(BaseBackend):
     NOTE! This backend wrapper currently can only be used on capsules
     that do not modify detection nodes in-place. Most if not all detectors
     should work fine.
-        This potentially can be fixed in the future by diffing the
+        This can potentially be fixed in the future by diffing the
     node.__dict__ of the incoming vs outgoing node and making the appropriate
     additions.
     """
@@ -187,7 +189,7 @@ class BackendRpcProcess(BaseBackend):
     def process_frame(self, *args, **kwargs) -> DETECTION_NODE_TYPE:
         return self._rpc_call("process_frame", *args, **kwargs)
 
-    def distances(self, *args, **kwargs):
+    def distances(self, *args, **kwargs) -> np.ndarray:
         return self._rpc_call("distances", *args, **kwargs)
 
     def batch_predict(self, *args, **kwargs):

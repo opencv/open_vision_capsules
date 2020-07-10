@@ -95,10 +95,8 @@ class BaseCapsule(ABC):
         in the pipeline, and run with that Backend. In multi-GPU scenarios,
         this is the logic that allows even usage across all GPUs."""
         with self.backends_lock:
-            # BaseBackend.oven.total_imgs_in_pipeline only represents the
-            # images in a single capsule's pipeline, not all the capsules.
-            # This helps distribute the load of multiple capsules.
-            #
+            # Pick the backend with the lowest current 'workload' and
+            # send the image there for inferencing.
             # Note the inplace shuffle, but this should be okay, esp. w/ lock
             random.shuffle(self.backends)
             laziest_backend: BaseBackend \
