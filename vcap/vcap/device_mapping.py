@@ -111,15 +111,18 @@ class DeviceMapper:
         """
 
         def filter_func(devices):
-            allowed_device_type = os.environ.get("OPENVINO_ALLOWABLE_DEVICES",
-                                                 "").lower()
+            allowed_device_type = os.environ.get(
+                "OPENVINO_ALLOWABLE_DEVICES", None)
 
-            if allowed_device_type in ("myriad", "hddl"):
+            allowed_devices = []
+            if allowed_device_type is None or allowed_device_type == "":
+                logging.info("No devices specified in "
+                             "OPENVINO_ALLOWABLE_DEVICES. Loading onto CPU.")
+            elif allowed_device_type.lower() in ("myriad", "hddl"):
                 allowed_devices = [
                     d for d in devices
                     if d.lower().startswith(allowed_device_type)]
             else:
-                allowed_devices = []
                 logging.warning(
                     "Invalid value for OPENVINO_ALLOWABLE_DEVICES. "
                     f"Loading onto CPU only. Value: {allowed_device_type}")
