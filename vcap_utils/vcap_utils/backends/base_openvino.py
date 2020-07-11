@@ -200,10 +200,10 @@ class BaseOpenVINOBackend(BaseBackend):
 
                 # Put another request in the queue, if there are frames
                 frame_id, input_dict = inputs.popleft()
-                request.async_infer(input_dict)
                 requests_in_progress[request] = frame_id
                 request.set_completion_callback(
                     lambda *args, request=request: on_result(request))
+                request.async_infer(input_dict)
 
     def close(self):
         super().close()
