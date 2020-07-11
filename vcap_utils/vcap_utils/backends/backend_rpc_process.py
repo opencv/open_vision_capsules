@@ -2,7 +2,7 @@ import multiprocessing
 import threading
 import queue
 import gc
-from typing import Type, List, Any, Dict, Tuple, Any, NoReturn
+from typing import Type, Dict, Tuple, Any, NoReturn
 from concurrent.futures import Future
 from uuid import uuid4, UUID
 from typing import NamedTuple
@@ -63,8 +63,8 @@ def _rpc_server(
 
     def handle_request(request: RpcRequest):
         try:
-            result = getattr(backend, request.function)(  # noqa: F821
-                *request.args, **request.kwargs)
+            fn = getattr(backend, request.function)  # noqa: F821
+            result = fn(*request.args, **request.kwargs)
         except BaseException as e:
             result = None
             exception = e
@@ -166,7 +166,7 @@ class BackendRpcProcess(BaseBackend):
             else:
                 future.set_result(response.result)
 
-    def _rpc_call(self, function: str, *args, **kwargs):
+    def _rpc_call(self, function: str, *args, **kwargs) -> Any:
         """Run a function on the remote backend.
         :param function: The function to run on the remote backend
         :param args: Arguments for the function
