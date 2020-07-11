@@ -5,7 +5,6 @@ import gc
 from typing import Type, List, Any, Dict, Tuple, Any, NoReturn
 from concurrent.futures import Future
 from uuid import uuid4, UUID
-from threading import RLock
 from typing import NamedTuple
 
 import numpy as np
@@ -54,10 +53,11 @@ def _rpc_server(
     # Initialize the backend and catch any errors during initialization
     try:
         backend = backend_class(*args, **kwargs)
-        outgoing.put(None)
     except BaseException as e:
         outgoing.put(e)
         return
+    else:
+        outgoing.put(None)
 
     pool = multiprocessing.pool.ThreadPool(processes=num_workers)
 
