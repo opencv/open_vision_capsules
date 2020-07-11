@@ -116,7 +116,6 @@ class BackendRpcProcess(BaseBackend):
         self._incoming = multiprocessing.Queue()
         self._outgoing = multiprocessing.Queue()
         self._shutdown = multiprocessing.Event()
-        self._futures_lock = RLock()
         self._futures: Dict[str, Future] = {}
         """Keep track of ongoing requests in a dict of request_id: Future """
 
@@ -150,8 +149,7 @@ class BackendRpcProcess(BaseBackend):
     def workload(self) -> int:
         # TODO: Use RPC to request the underlying Backends
         #       'workload' implementation
-        with self._futures_lock:
-            return len(self._futures)
+        return len(self._futures)
 
     def _rpc_client(self):
         """This is the dedicated thread for receiving and routing results
@@ -162,8 +160,7 @@ class BackendRpcProcess(BaseBackend):
                 response: RpcResponse = self._incoming.get(timeout=0.1)
             except queue.Empty:
                 continue
-            with self._futures_lock:
-                future = self._futures.pop(response.request_id)
+            future = self._futures.pop(response.request_id)
             if response.exception:
                 future.set_exception(response.exception)
             else:
@@ -183,8 +180,7 @@ class BackendRpcProcess(BaseBackend):
         )
 
         future = Future()
-        with self._futures_lock:
-            self._futures[request.request_id] = future
+        self._futures[request.request_id] = future
         self._outgoing.put(request)
         return future.result()
 
