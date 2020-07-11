@@ -1,9 +1,9 @@
-from typing import Type, List, Any, Dict, Tuple, Any
-from concurrent.futures import Future
 import multiprocessing
 import threading
 import queue
 import gc
+from typing import Type, List, Any, Dict, Tuple, Any, NoReturn
+from concurrent.futures import Future
 from uuid import uuid4, UUID
 from threading import RLock
 from typing import NamedTuple
@@ -65,10 +65,12 @@ def _rpc_server(
         try:
             result = getattr(backend, request.function)(  # noqa: F821
                 *request.args, **request.kwargs)
-            exception = None
         except BaseException as e:
             result = None
             exception = e
+        else:
+            exception = None
+
         outgoing.put(RpcResponse(
             request_id=request.request_id,
             result=result,
@@ -192,7 +194,7 @@ class BackendRpcProcess(BaseBackend):
     def distances(self, *args, **kwargs) -> np.ndarray:
         return self._rpc_call("distances", *args, **kwargs)
 
-    def batch_predict(self, *args, **kwargs):
+    def batch_predict(self, *args, **kwargs) -> NoReturn:
         """This function is implemented on the backend running on the backend
         process. It shouldn't be called from the parent process."""
         raise NotImplementedError()

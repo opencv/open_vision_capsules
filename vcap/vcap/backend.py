@@ -30,7 +30,7 @@ class BaseBackend(abc.ABC):
         return self._oven.submit(input_data)
 
     @property
-    def workload(self) -> Union[float, int]:
+    def workload(self) -> float:
         """Returns a unit representing the amount of 'work' being processed
         This value is comparable only by backends of the same capsule, and
         is intended to give the scheduler the ability to pick the least busy

@@ -88,18 +88,15 @@ class DeviceMapper:
         """Intelligently load capsules onto available OpenVINO-compatible
         devices.
 
-        Since support for OpenVINO devices is very experimental, there is a
+        Since support for OpenVINO devices is experimental, there is a
         temporary environment variable being added to whitelist devices
         specifically. This variable will be deprecated and removed after a
         short testing period.
 
         OPENVINO_ALLOWABLE_DEVICES can be
             "", "HDDL", or "MYRIAD"
-        The device "CPU" is _always_ allowed and always loaded onto.
-
-        The logic is as follows: IECore().available_devices is used to scan
-        for devices, then the following logic is used to load onto devices,
-        as long as the devices are whitelisted by OPENVINO_ALLOWABLE_DEVICES
+        The device "CPU" is _always_ allowed and always loaded onto and cannot
+        be excluded.
 
         Here are the cases:
         ['CPU:0', 'MYRIAD', ...] => ['CPU:0', 'MYRIAD']
