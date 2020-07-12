@@ -112,7 +112,7 @@ class DeviceMapper:
                 "OPENVINO_ALLOWABLE_DEVICES", None)
 
             allowed_devices = []
-            if allowed_device_type.lower() in (None, ""):
+            if allowed_device_type in (None, ""):
                 logging.info("No devices specified in "
                              "OPENVINO_ALLOWABLE_DEVICES. Loading onto CPU.")
             elif allowed_device_type.lower() in ("myriad", "hddl"):
