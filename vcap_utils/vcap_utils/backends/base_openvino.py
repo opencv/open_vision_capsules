@@ -171,8 +171,12 @@ class BaseOpenVINOBackend(BaseBackend):
         that results are sent in the same order as the inputs."""
 
         def on_result(request):
-            frame_id = requests_in_progress.pop(request)
+            # Move the requests_in_progress to the unsent_results
+            frame_id = requests_in_progress[request]
             unsent_results[frame_id] = request.outputs
+
+            # Now remove it from requests_in_progress
+            del requests_in_progress[request]
             result_ready.set()
 
         requests = list(self.exec_net.requests)
