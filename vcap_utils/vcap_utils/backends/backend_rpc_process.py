@@ -5,7 +5,7 @@ import gc
 from typing import Type, Dict, Tuple, Any, NoReturn
 from concurrent.futures import Future
 from uuid import uuid4, UUID
-from typing import NamedTuple
+from typing import NamedTuple, Type
 
 import numpy as np
 
@@ -39,7 +39,9 @@ def _rpc_server(
         outgoing: multiprocessing.Queue,
         shutdown: multiprocessing.Event,
         num_workers: int,
-        backend_class, args, kwargs):
+        backend_class: Type[BaseBackend],
+        args,
+        kwargs):
     """ An RPC server for running Backend functions.
     :param incoming: Receives RpcRequests through here
     :param outgoing: Returns RpcResponses here
