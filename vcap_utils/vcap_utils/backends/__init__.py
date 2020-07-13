@@ -7,6 +7,7 @@ from .depth import DepthPredictor
 from .segmentation import Segmenter
 from .openface_encoder import OpenFaceEncoder
 from .base_encoder import BaseEncoderBackend
+from .backend_rpc_process import BackendRpcProcess
 from .load_utils import parse_dataset_metadata_bytes, parse_tf_model_bytes
 from .predictions import (
     EncodingPrediction,

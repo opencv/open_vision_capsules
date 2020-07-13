@@ -1,3 +1,4 @@
+import os
 import logging
 from threading import RLock
 from typing import Callable, List
@@ -83,15 +84,46 @@ class DeviceMapper:
         return DeviceMapper(filter_func=filter_func)
 
     @staticmethod
-    def map_to_all_myriad(cpu_fallback=True):
-        """Returns Myriad device. If cpu_fallback=True, it will return CPU:0
-        if there are no myriad devices."""
+    def map_to_openvino_devices():
+        """Intelligently load capsules onto available OpenVINO-compatible
+        devices.
+
+        Since support for OpenVINO devices is experimental, there is a
+        temporary environment variable being added to whitelist devices
+        specifically. This variable will be deprecated and removed after a
+        short testing period.
+
+        OPENVINO_ALLOWABLE_DEVICES can be
+            "", "HDDL", or "MYRIAD"
+        The device "CPU" is _always_ allowed and always loaded onto and cannot
+        be excluded.
+
+        Here are the cases:
+        ['CPU:0', 'MYRIAD', ...] => ['CPU:0', 'MYRIAD']
+            If MYRIAD is whitelisted. Else, it will return ["CPU:0"]
+        ['CPU:0', 'HDDL', ...] =>  ['CPU:0', 'HDDL']
+            If HDDL is whitelisted. Else, it will return ["CPU:0"]
+        ['CPU:0'] => ['CPU:0']
+            Always load onto CPU.
+        """
 
         def filter_func(devices):
-            myriad_devices = [d for d in devices
-                              if d.lower().startswith("myriad")]
-            if not myriad_devices and cpu_fallback:
-                return ["CPU:0"]
-            return myriad_devices
+            allowed_device_type = os.environ.get(
+                "OPENVINO_ALLOWABLE_DEVICES", None)
+
+            allowed_devices = []
+            if allowed_device_type in (None, ""):
+                logging.info("No devices specified in "
+                             "OPENVINO_ALLOWABLE_DEVICES. Loading onto CPU.")
+            elif allowed_device_type.lower() in ("myriad", "hddl"):
+                allowed_devices = [
+                    d for d in devices
+                    if d.lower().startswith(allowed_device_type)]
+            else:
+                logging.warning(
+                    "Invalid value for OPENVINO_ALLOWABLE_DEVICES. "
+                    f"Loading onto CPU only. Value: '{allowed_device_type}'")
+
+            return ["CPU:0"] + allowed_devices
 
         return DeviceMapper(filter_func=filter_func)

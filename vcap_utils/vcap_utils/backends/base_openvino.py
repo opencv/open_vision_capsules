@@ -171,8 +171,12 @@ class BaseOpenVINOBackend(BaseBackend):
         that results are sent in the same order as the inputs."""
 
         def on_result(request):
-            frame_id = requests_in_progress.pop(request)
+            # Move the requests_in_progress to the unsent_results
+            frame_id = requests_in_progress[request]
             unsent_results[frame_id] = request.outputs
+
+            # Now remove it from requests_in_progress
+            del requests_in_progress[request]
             result_ready.set()
 
         requests = list(self.exec_net.requests)
@@ -200,11 +204,16 @@ class BaseOpenVINOBackend(BaseBackend):
 
                 # Put another request in the queue, if there are frames
                 frame_id, input_dict = inputs.popleft()
-                request.async_infer(input_dict)
                 requests_in_progress[request] = frame_id
                 request.set_completion_callback(
                     lambda *args, request=request: on_result(request))
+                request.async_infer(input_dict)
 
     def close(self):
-        """Does nothing"""
-        pass
+        super().close()
+        # Since there's no way to tell OpenVINO to close sockets to HDDL
+        # (or other plugins), dereferencing everything is the safest way
+        # to go. Without this, OpenVINO seems to crash the HDDL daemon.
+        self.ie = None
+        self.net = None
+        self.exec_net = None
