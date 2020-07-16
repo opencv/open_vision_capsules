@@ -129,7 +129,8 @@ class DeviceMapper:
                     f"Loading onto CPU only. Value: '{allowed_device_type}'")
 
             devices = ["CPU"] + allowed_devices
-            if len(devices):
+
+            if len(allowed_devices):
                 return ["MULTI:" + ",".join(devices)]
             else:
                 return devices
