@@ -1,3 +1,5 @@
+from functools import partial
+from itertools import cycle
 from threading import Event
 from typing import Dict, List, Tuple, Deque
 from collections import deque
@@ -158,57 +160,51 @@ class BaseOpenVINOBackend(BaseBackend):
         :returns: A generator of the networks outputs, yielding them in the
         same order as the inputs
         """
-
-        inputs: Deque[Tuple[int, OV_INPUT_TYPE]] = deque(enumerate(inputs))
-        """A deque containing tuples of (frame_id, input) for inference"""
-        requests_in_progress: Dict['InferRequest', int] = {}  # noqa: F821
-        """A dictionary of {InferRequest: frame_id} for ongoing requests"""
-        unsent_results: Dict[int: Dict] = {}
-        """A dictionary of {frame_id: output}, the results not yet yielded"""
-        result_ready: Event = Event()
-        """Triggered when any InferRequest finishes processing"""
+        n_inputs: int = len(inputs)
+        """Keep track of the number of expected total results"""
         next_frame_id: int = 0
         """The next frame_id we are awaiting results to send. This guarantees
         that results are sent in the same order as the inputs."""
+        inputs: Deque[Tuple[int, OV_INPUT_TYPE]] = deque(enumerate(inputs))
+        """A deque containing tuples of (frame_id, input) for inference"""
+        unsent_results: Dict[int: Dict] = {}
+        """A dictionary of {frame_id: output}, the results not yet yielded"""
+        requests = [(Event(), request) for request in self.exec_net.requests]
+        """A list of (Event, InferRequest) tuples. The Event is set when 
+         the InferRequest is finished with inference, and at the start of
+         the run."""
 
-        def on_result(request):
-            # Move the requests_in_progress to the unsent_results
-            frame_id = requests_in_progress[request]
+        def on_result(request_free_event, request, frame_id, *args):
             unsent_results[frame_id] = request.outputs
+            request_free_event.set()
 
-            # Now remove it from requests_in_progress
-            del requests_in_progress[request]
-            result_ready.set()
-
-        requests = list(self.exec_net.requests)
+        # Start all request_events as set (ie, ready for inference)
+        for request_free, _ in requests:
+            request_free.set()
 
         # This loop will end when all inputs have been processed and outputs
         # have been yielded
-        while inputs or unsent_results or requests_in_progress:
-            if len(requests_in_progress):
-                # Block until at least one result is ready
-                result_ready.wait()
-                result_ready.clear()
+        for request_free, request in cycle(requests):
+            # Return any results that are waiting to be returned
             while next_frame_id in unsent_results:
                 yield unsent_results.pop(next_frame_id)
                 next_frame_id += 1
 
-            for request in requests:
-                if not len(inputs):
-                    break
+            if next_frame_id == n_inputs:
+                break
 
-                # For debugging, verify the request is ready to be used
-                request.wait()
-                status = request.wait(0)
-                assert (status == self.InferRequestStatusCode.INFER_NOT_STARTED
-                        or status == self.InferRequestStatusCode.OK)
+            # Wait for the request to be done with previous inference
+            request_free.wait()
 
-                # Put another request in the queue, if there are frames
-                frame_id, input_dict = inputs.popleft()
-                requests_in_progress[request] = frame_id
-                request.set_completion_callback(
-                    lambda *args, request=request: on_result(request))
-                request.async_infer(input_dict)
+            if not len(inputs):
+                continue
+
+            # Put another request in the queue, if there are frames
+            frame_id, input_dict = inputs.popleft()
+            request.set_completion_callback(
+                partial(on_result, request_free, request, frame_id))
+            request_free.clear()
+            request.async_infer(input_dict)
 
     def close(self):
         super().close()
