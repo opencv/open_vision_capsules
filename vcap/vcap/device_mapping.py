@@ -126,7 +126,7 @@ class DeviceMapper:
 
             devices = ["CPU"] + allowed_devices
             if len(devices):
-                return "MULTI:" + ",".join(devices)
+                return ["MULTI:" + ",".join(devices)]
             else:
                 return devices
 
