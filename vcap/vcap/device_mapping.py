@@ -118,7 +118,11 @@ class DeviceMapper:
             elif allowed_device_type.lower() in ("myriad", "hddl"):
                 allowed_devices = [
                     d for d in devices
-                    if d.lower().startswith(allowed_device_type)]
+                    if d.lower().startswith(allowed_device_type.lower())]
+                if not len(allowed_devices):
+                    logging.warning("OPENVINO_ALLOWABLE_DEVICES specified "
+                                    f"{allowed_device_type}, but no such "
+                                    f"device was found.")
             else:
                 logging.warning(
                     "Invalid value for OPENVINO_ALLOWABLE_DEVICES. "
