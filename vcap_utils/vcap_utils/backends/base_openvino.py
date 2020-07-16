@@ -35,18 +35,19 @@ class BaseOpenVINOBackend(BaseBackend):
 
         self.ie = ie_core or IECore()
 
+        is_multi_device = device_name.lower().startswith("multi")
+
         # Find the optimal number of InferRequests for this device
-        supported_metrics = self.ie.get_metric(
-            device_name, _SUPPORTED_METRICS)
-        if _RANGE_FOR_ASYNC_INFER_REQUESTS in supported_metrics:
-            low, high, _ = self.ie.get_metric(
-                device_name, _RANGE_FOR_ASYNC_INFER_REQUESTS)
-            # Cap the n_requests, because sometimes high_n crashes the system
-            # TODO(Alex): Figure out _why_ hddl crashes when set to 'high'
-            n_requests = max(0, min(low * 2, high))
-        else:
-            # Use the devices default
-            n_requests = 0
+        n_requests = 0
+        if not is_multi_device:
+            supported_metrics = self.ie.get_metric(
+                device_name, _SUPPORTED_METRICS)
+            if _RANGE_FOR_ASYNC_INFER_REQUESTS in supported_metrics:
+                low, high, _ = self.ie.get_metric(
+                    device_name, _RANGE_FOR_ASYNC_INFER_REQUESTS)
+                # Cap the n_requests, because setting it too high can crash
+                # TODO(Alex): Figure out _why_ hddl crashes when set to 'high'
+                n_requests = max(0, min(low * 2, high))
 
         self.net: IENetwork = self.ie.read_network(
             model=model_xml,
