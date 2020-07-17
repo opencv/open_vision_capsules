@@ -1,3 +1,4 @@
+import logging
 from functools import partial
 from itertools import cycle
 from threading import Event
@@ -56,10 +57,30 @@ class BaseOpenVINOBackend(BaseBackend):
             weights=weights_bin,
             init_from_buffer=True)
 
-        self.exec_net: ExecutableNetwork = self.ie.load_network(
-            network=self.net,
-            device_name=device_name,
-            num_requests=n_requests)
+        try:
+            self.exec_net: ExecutableNetwork = self.ie.load_network(
+                network=self.net,
+                device_name=device_name,
+                num_requests=n_requests)
+        except RuntimeError as e:
+            # This error happens when trying to load onto HDDL or MYRIAD, but
+            # somehow the device fails to work. In these cases, we try again
+            # but load onto 'CPU', which is a safe choice.
+
+            if device_name == "CPU":
+                # It's unknown why this would happen when loading
+                # onto CPU, so we re-raise the error.
+                raise e
+            msg = f"Failed to load {self.__class__} onto device " \
+                  f"{device_name}. Error: '{e}'. " \
+                  f"Trying again with device_name='CPU'"
+            logging.critical(msg)
+            self.__init__(
+                model_xml=model_xml,
+                weights_bin=weights_bin,
+                device_name="CPU",
+                ie_core=ie_core)
+            return
 
         # Pull out a couple useful constants
         self.InferRequestStatusCode = StatusCode
