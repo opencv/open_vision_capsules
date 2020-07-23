@@ -81,20 +81,20 @@ class BaseOpenVINOBackend(BaseBackend):
             return
 
         # Pull out a couple useful constants
-        self.InferRequestStatusCode = StatusCode
         self.input_blob_names: List[str] = list(self.net.inputs.keys())
         self.output_blob_names: List[str] = list(self.net.outputs.keys())
 
         # For running threaded requests to the network
-        self.get_free_request_lock = RLock()
-        self.request_free_events = [Event() for _ in self.exec_net.requests]
-        for request_free in self.request_free_events:
+        self._get_free_request_lock = RLock()
+        self._request_free_events: List[Event] = [
+            Event() for _ in self.exec_net.requests]
+        for request_free in self._request_free_events:
             request_free.set()
 
         # For keeping track of the workload for this backend
-        self.total_requests = len(self.exec_net.requests)
-        self.num_ongoing_requests: int = 0
-        self.num_ongoing_requests_lock = RLock()
+        self._total_requests: int = len(self.exec_net.requests)
+        self._num_ongoing_requests: int = 0
+        self._num_ongoing_requests_lock: RLock = RLock()
 
     @property
     def workload(self) -> float:
@@ -102,7 +102,7 @@ class BaseOpenVINOBackend(BaseBackend):
         at max 'efficiency' once the number of ongoing requests is equal to
         or over number of exec_net.requests
         """
-        return self.num_ongoing_requests / self.total_requests
+        return self._num_ongoing_requests / self._total_requests
 
     def send_to_batch(self, input_data: OV_INPUT_TYPE) -> Queue:
         """Efficiently send the input to be inferenced by the network
@@ -111,7 +111,7 @@ class BaseOpenVINOBackend(BaseBackend):
         """
         out_queue = Queue(maxsize=1)
 
-        with self.get_free_request_lock:
+        with self._get_free_request_lock:
             # Try to get at least one request
             request_id = self.exec_net.get_idle_request_id()
             if request_id < 0:
@@ -122,13 +122,13 @@ class BaseOpenVINOBackend(BaseBackend):
                     raise RuntimeError("Invalid request ID!")
 
             request = self.exec_net.requests[request_id]
-            request_free = self.request_free_events[request_id]
+            request_free = self._request_free_events[request_id]
 
             def on_result(*args):
                 out_queue.put(request.outputs)
                 request_free.set()
-                with self.num_ongoing_requests_lock:
-                    self.num_ongoing_requests -= 1
+                with self._num_ongoing_requests_lock:
+                    self._num_ongoing_requests -= 1
 
             # Make sure that the callback for this request is finished, by
             # calling request_free.wait().
@@ -136,8 +136,8 @@ class BaseOpenVINOBackend(BaseBackend):
             request_free.clear()
             request.set_completion_callback(on_result)
 
-            with self.num_ongoing_requests_lock:
-                self.num_ongoing_requests += 1
+            with self._num_ongoing_requests_lock:
+                self._num_ongoing_requests += 1
             request.async_infer(input_data)
         return out_queue
 
