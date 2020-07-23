@@ -1,9 +1,7 @@
 import logging
-from functools import partial
-from itertools import cycle
-from threading import Event
-from typing import Dict, List, Tuple, Deque
-from collections import deque
+from threading import Event, RLock
+from typing import Dict, List, Tuple
+from queue import Queue
 
 import numpy as np
 
@@ -29,7 +27,6 @@ class BaseOpenVINOBackend(BaseBackend):
           settings already applied. This can be used to apply CPU extensions
           or load different plugins to the IECore giving it to the backend.
         """
-        super().__init__()
         # Convert from the vcap device naming format to openvino format
         device_name = "CPU" if device_name[:4] == "CPU:" else device_name
 
@@ -86,6 +83,58 @@ class BaseOpenVINOBackend(BaseBackend):
         self.InferRequestStatusCode = StatusCode
         self.input_blob_names: List[str] = list(self.net.inputs.keys())
         self.output_blob_names: List[str] = list(self.net.outputs.keys())
+
+        # For running threaded requests to the network
+        self.get_free_request_lock = RLock()
+        self.request_free_events = [Event() for _ in self.exec_net.requests]
+        for request_free in self.request_free_events:
+            request_free.set()
+
+        # For keeping track of the workload for this backend
+        self.n_requests = len(self.exec_net.requests)
+        self.n_ongoing_requests_lock = RLock()
+        self.n_ongoing_requests: int = 0
+
+    @property
+    def workload(self) -> float:
+        """Returns the percent saturation of this backend. The backend is
+        saturated once the number of ongoing requests is equal to the number
+        of exec_net.requests
+        """
+        return self.n_ongoing_requests / self.n_requests
+
+    def send_to_batch(self, input_data) -> Queue:
+        out_queue = Queue()
+
+        with self.get_free_request_lock:
+            # Try to get at least one request
+            request_id = self.exec_net.get_idle_request_id()
+            if request_id < 0:
+                # Since there was no free request, wait for one
+                self.exec_net.wait(num_requests=1)
+                request_id = self.exec_net.get_idle_request_id()
+                if request_id < 0:
+                    raise RuntimeError("Invalid request ID!")
+
+            request = self.exec_net.requests[request_id]
+            request_free = self.request_free_events[request_id]
+
+            def on_result(*args):
+                out_queue.put(request.outputs)
+                request_free.set()
+                with self.n_ongoing_requests_lock:
+                    self.n_ongoing_requests -= 1
+
+            # Make sure that the callback for this request is finished, by
+            # calling request_free.wait().
+            request_free.wait()
+            request_free.clear()
+            request.set_completion_callback(on_result)
+            request.async_infer(input_data)
+
+        with self.n_ongoing_requests_lock:
+            self.n_ongoing_requests += 1
+        return out_queue
 
     def prepare_inputs(self, frame: np.ndarray, frame_input_name: str = None) \
             -> Tuple[OV_INPUT_TYPE, Resize]:
@@ -171,64 +220,7 @@ class BaseOpenVINOBackend(BaseBackend):
         resize.scale_and_offset_detection_nodes(nodes)
         return nodes
 
-    def batch_predict(self, inputs: List[OV_INPUT_TYPE]) \
-            -> List[object]:
-        """Use the network for inference.
-
-        This function will receive a list of inputs and process them as
-        efficiently as possible, optimizing for throughput.
-        :param inputs: A list of openvino style inputs {input_name: ndarray}
-        :returns: A generator of the networks outputs, yielding them in the
-        same order as the inputs
-        """
-        n_inputs: int = len(inputs)
-        """Keep track of the number of expected total results"""
-        next_frame_id: int = 0
-        """The next frame_id we are awaiting results to send. This guarantees
-        that results are sent in the same order as the inputs."""
-        inputs: Deque[Tuple[int, OV_INPUT_TYPE]] = deque(enumerate(inputs))
-        """A deque containing tuples of (frame_id, input) for inference"""
-        unsent_results: Dict[int: Dict] = {}
-        """A dictionary of {frame_id: output}, the results not yet yielded"""
-        requests = [(Event(), request) for request in self.exec_net.requests]
-        """A list of (Event, InferRequest) tuples. The Event is set when 
-         the InferRequest is finished with inference, and at the start of
-         the run."""
-
-        def on_result(request_free_event, request, frame_id, *args):
-            unsent_results[frame_id] = request.outputs
-            request_free_event.set()
-
-        # Start all request_events as set (ie, ready for inference)
-        for request_free, _ in requests:
-            request_free.set()
-
-        # This loop will end when all inputs have been processed and outputs
-        # have been yielded
-        for request_free, request in cycle(requests):
-            # Return any results that are waiting to be returned
-            while next_frame_id in unsent_results:
-                yield unsent_results.pop(next_frame_id)
-                next_frame_id += 1
-
-            if next_frame_id == n_inputs:
-                break
-
-            # Wait for the request to be done with previous inference
-            request_free.wait()
-
-            if not len(inputs):
-                continue
-
-            # Put another request in the queue, if there are frames
-            frame_id, input_dict = inputs.popleft()
-            request.set_completion_callback(
-                partial(on_result, request_free, request, frame_id))
-            request_free.clear()
-            request.async_infer(input_dict)
-
     def close(self):
-        super().close()
         # Since there's no way to tell OpenVINO to close sockets to HDDL
         # (or other plugins), dereferencing everything is the safest way
         # to go. Without this, OpenVINO seems to crash the HDDL daemon.
