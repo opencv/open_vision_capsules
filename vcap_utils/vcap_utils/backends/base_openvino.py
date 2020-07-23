@@ -224,6 +224,9 @@ class BaseOpenVINOBackend(BaseBackend):
         # Since there's no way to tell OpenVINO to close sockets to HDDL
         # (or other plugins), dereferencing everything is the safest way
         # to go. Without this, OpenVINO seems to crash the HDDL daemon.
+        del self.ie
+        del self.net
+        del self.exec_net
         self.ie = None
         self.net = None
         self.exec_net = None
