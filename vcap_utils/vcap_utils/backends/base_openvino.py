@@ -35,10 +35,10 @@ class BaseOpenVINOBackend(BaseBackend):
 
         self.ie = ie_core or IECore()
 
-        # If the device is a MULTI device, use the default n_requests
+        # If the device is a MULTI device, use the default num_requests
         is_multi_device = device_name.lower().startswith("multi")
 
-        n_requests = 0
+        num_requests = 0
         if not is_multi_device:
             # Find the optimal number of InferRequests for this device
             supported_metrics = self.ie.get_metric(
@@ -46,9 +46,9 @@ class BaseOpenVINOBackend(BaseBackend):
             if _RANGE_FOR_ASYNC_INFER_REQUESTS in supported_metrics:
                 low, high, _ = self.ie.get_metric(
                     device_name, _RANGE_FOR_ASYNC_INFER_REQUESTS)
-                # Cap the n_requests, because setting it too high can crash
+                # Cap the num_requests, because setting it too high can crash
                 # TODO(Alex): Figure out _why_ hddl crashes when set to 'high'
-                n_requests = max(0, min(low * 2, high))
+                num_requests = max(0, min(low * 2, high))
 
         self.net: IENetwork = self.ie.read_network(
             model=model_xml,
@@ -59,7 +59,7 @@ class BaseOpenVINOBackend(BaseBackend):
             self.exec_net: ExecutableNetwork = self.ie.load_network(
                 network=self.net,
                 device_name=device_name,
-                num_requests=n_requests)
+                num_requests=num_requests)
         except RuntimeError as e:
             if device_name == "CPU":
                 # It's unknown why this would happen when loading
@@ -92,9 +92,9 @@ class BaseOpenVINOBackend(BaseBackend):
             request_free.set()
 
         # For keeping track of the workload for this backend
-        self.n_requests = len(self.exec_net.requests)
-        self.n_ongoing_requests_lock = RLock()
-        self.n_ongoing_requests: int = 0
+        self.total_requests = len(self.exec_net.requests)
+        self.num_ongoing_requests: int = 0
+        self.num_ongoing_requests_lock = RLock()
 
     @property
     def workload(self) -> float:
@@ -102,7 +102,7 @@ class BaseOpenVINOBackend(BaseBackend):
         at max 'efficiency' once the number of ongoing requests is equal to
         or over number of exec_net.requests
         """
-        return self.n_ongoing_requests / self.n_requests
+        return self.num_ongoing_requests / self.total_requests
 
     def send_to_batch(self, input_data: OV_INPUT_TYPE) -> Queue:
         """Efficiently send the input to be inferenced by the network
@@ -127,8 +127,8 @@ class BaseOpenVINOBackend(BaseBackend):
             def on_result(*args):
                 out_queue.put(request.outputs)
                 request_free.set()
-                with self.n_ongoing_requests_lock:
-                    self.n_ongoing_requests -= 1
+                with self.num_ongoing_requests_lock:
+                    self.num_ongoing_requests -= 1
 
             # Make sure that the callback for this request is finished, by
             # calling request_free.wait().
@@ -136,8 +136,8 @@ class BaseOpenVINOBackend(BaseBackend):
             request_free.clear()
             request.set_completion_callback(on_result)
 
-            with self.n_ongoing_requests_lock:
-                self.n_ongoing_requests += 1
+            with self.num_ongoing_requests_lock:
+                self.num_ongoing_requests += 1
             request.async_infer(input_data)
         return out_queue
 
