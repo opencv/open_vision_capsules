@@ -35,11 +35,12 @@ class BaseOpenVINOBackend(BaseBackend):
 
         self.ie = ie_core or IECore()
 
+        # If the device is a MULTI device, use the default n_requests
         is_multi_device = device_name.lower().startswith("multi")
 
-        # Find the optimal number of InferRequests for this device
         n_requests = 0
         if not is_multi_device:
+            # Find the optimal number of InferRequests for this device
             supported_metrics = self.ie.get_metric(
                 device_name, _SUPPORTED_METRICS)
             if _RANGE_FOR_ASYNC_INFER_REQUESTS in supported_metrics:
@@ -60,14 +61,14 @@ class BaseOpenVINOBackend(BaseBackend):
                 device_name=device_name,
                 num_requests=n_requests)
         except RuntimeError as e:
-            # This error happens when trying to load onto HDDL or MYRIAD, but
-            # somehow the device fails to work. In these cases, we try again
-            # but load onto 'CPU', which is a safe choice.
-
             if device_name == "CPU":
                 # It's unknown why this would happen when loading
                 # onto CPU, so we re-raise the error.
                 raise e
+
+            # This error happens when trying to load onto HDDL or MYRIAD, but
+            # somehow the device fails to work. In these cases, we try again
+            # but load onto 'CPU', which is a safe choice.
             msg = f"Failed to load {self.__class__} onto device " \
                   f"{device_name}. Error: '{e}'. " \
                   f"Trying again with device_name='CPU'"
@@ -98,13 +99,17 @@ class BaseOpenVINOBackend(BaseBackend):
     @property
     def workload(self) -> float:
         """Returns the percent saturation of this backend. The backend is
-        saturated once the number of ongoing requests is equal to the number
-        of exec_net.requests
+        at max 'efficiency' once the number of ongoing requests is equal to
+        or over number of exec_net.requests
         """
         return self.n_ongoing_requests / self.n_requests
 
-    def send_to_batch(self, input_data) -> Queue:
-        out_queue = Queue()
+    def send_to_batch(self, input_data: OV_INPUT_TYPE) -> Queue:
+        """Efficiently send the input to be inferenced by the network
+        :param input_data: Input to the network
+        :returns: A queue that will yield 1 result, the output from the network
+        """
+        out_queue = Queue(maxsize=1)
 
         with self.get_free_request_lock:
             # Try to get at least one request
@@ -130,10 +135,10 @@ class BaseOpenVINOBackend(BaseBackend):
             request_free.wait()
             request_free.clear()
             request.set_completion_callback(on_result)
-            request.async_infer(input_data)
 
-        with self.n_ongoing_requests_lock:
-            self.n_ongoing_requests += 1
+            with self.n_ongoing_requests_lock:
+                self.n_ongoing_requests += 1
+            request.async_infer(input_data)
         return out_queue
 
     def prepare_inputs(self, frame: np.ndarray, frame_input_name: str = None) \
