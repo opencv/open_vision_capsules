@@ -64,7 +64,7 @@ class BaseOpenVINOBackend(BaseBackend):
             if device_name == "CPU":
                 # It's unknown why this would happen when loading
                 # onto CPU, so we re-raise the error.
-                raise e
+                raise
 
             # This error happens when trying to load onto HDDL or MYRIAD, but
             # somehow the device fails to work. In these cases, we try again
@@ -72,7 +72,7 @@ class BaseOpenVINOBackend(BaseBackend):
             msg = f"Failed to load {self.__class__} onto device " \
                   f"{device_name}. Error: '{e}'. " \
                   f"Trying again with device_name='CPU'"
-            logging.critical(msg)
+            logging.error(msg)
             self.__init__(
                 model_xml=model_xml,
                 weights_bin=weights_bin,
@@ -88,6 +88,13 @@ class BaseOpenVINOBackend(BaseBackend):
         self._get_free_request_lock = RLock()
         self._request_free_events: List[Event] = [
             Event() for _ in self.exec_net.requests]
+        """This list corresponds 1:1 with request ID's from OpenVINO. 
+        The Events are used to make sure that the request isn't in the middle
+        of running a callback while another thread attempts to start another
+        async request. 
+        
+        The events start as 'set' to indicate they are free to run
+        """
         for request_free in self._request_free_events:
             request_free.set()
 
@@ -101,6 +108,11 @@ class BaseOpenVINOBackend(BaseBackend):
         """Returns the percent saturation of this backend. The backend is
         at max 'efficiency' once the number of ongoing requests is equal to
         or over number of exec_net.requests
+
+        This won't affect much unless a custom DeviceMapper filter is used that
+        allows multiple Backends to be loaded, eg, a backend for CPU and a
+        ackend for HDDL. In those cases, this workload measurement will be used
+        heavily to decide which backend is busier.
         """
         return self._num_ongoing_requests / self._total_requests
 
@@ -119,7 +131,7 @@ class BaseOpenVINOBackend(BaseBackend):
                 self.exec_net.wait(num_requests=1)
                 request_id = self.exec_net.get_idle_request_id()
                 if request_id < 0:
-                    raise RuntimeError("Invalid request ID!")
+                    raise RuntimeError(f"Invalid request_id: {request_id}")
 
             request = self.exec_net.requests[request_id]
             request_free = self._request_free_events[request_id]
