@@ -111,7 +111,7 @@ class BaseOpenVINOBackend(BaseBackend):
 
         This won't affect much unless a custom DeviceMapper filter is used that
         allows multiple Backends to be loaded, eg, a backend for CPU and a
-        ackend for HDDL. In those cases, this workload measurement will be used
+        backend for HDDL. In those cases, this workload measurement will be used
         heavily to decide which backend is busier.
         """
         return self._num_ongoing_requests / self._total_requests
