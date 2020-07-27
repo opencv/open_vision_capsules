@@ -99,11 +99,11 @@ class DeviceMapper:
         be excluded.
 
         Here are the cases:
-        ['CPU:0', 'MYRIAD', ...] => ['CPU:0', 'MYRIAD']
-            If MYRIAD is whitelisted. Else, it will return ["CPU:0"]
-        ['CPU:0', 'HDDL', ...] =>  ['CPU:0', 'HDDL']
-            If HDDL is whitelisted. Else, it will return ["CPU:0"]
-        ['CPU:0'] => ['CPU:0']
+        ['CPU:0', 'MYRIAD', ...] => ["MULTI:CPU,MYRIAD.1,MYRIAD.2,..."]
+            If MYRIAD is whitelisted. Else, it will return ["CPU"]
+        ['CPU:0', 'HDDL', ...] =>  ["MULTI:CPU,HDDL"]
+            If HDDL is whitelisted. Else, it will return ["CPU"]
+        ['CPU:0'] => ["CPU"]
             Always load onto CPU.
         """
 
@@ -118,12 +118,21 @@ class DeviceMapper:
             elif allowed_device_type.lower() in ("myriad", "hddl"):
                 allowed_devices = [
                     d for d in devices
-                    if d.lower().startswith(allowed_device_type)]
+                    if d.lower().startswith(allowed_device_type.lower())]
+                if not len(allowed_devices):
+                    logging.warning("OPENVINO_ALLOWABLE_DEVICES specified "
+                                    f"{allowed_device_type}, but no such "
+                                    f"device was found.")
             else:
                 logging.warning(
                     "Invalid value for OPENVINO_ALLOWABLE_DEVICES. "
                     f"Loading onto CPU only. Value: '{allowed_device_type}'")
 
-            return ["CPU:0"] + allowed_devices
+            devices = ["CPU"] + allowed_devices
+
+            if len(allowed_devices):
+                return ["MULTI:" + ",".join(devices)]
+            else:
+                return devices
 
         return DeviceMapper(filter_func=filter_func)

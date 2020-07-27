@@ -1,6 +1,7 @@
-from threading import Event
-from typing import Dict, List, Tuple, Deque
-from collections import deque
+import logging
+from threading import Event, RLock
+from typing import Dict, List, Tuple
+from queue import Queue
 
 import numpy as np
 
@@ -26,7 +27,6 @@ class BaseOpenVINOBackend(BaseBackend):
           settings already applied. This can be used to apply CPU extensions
           or load different plugins to the IECore giving it to the backend.
         """
-        super().__init__()
         # Convert from the vcap device naming format to openvino format
         device_name = "CPU" if device_name[:4] == "CPU:" else device_name
 
@@ -35,33 +35,127 @@ class BaseOpenVINOBackend(BaseBackend):
 
         self.ie = ie_core or IECore()
 
-        # Find the optimal number of InferRequests for this device
-        supported_metrics = self.ie.get_metric(
-            device_name, _SUPPORTED_METRICS)
-        if _RANGE_FOR_ASYNC_INFER_REQUESTS in supported_metrics:
-            low, high, _ = self.ie.get_metric(
-                device_name, _RANGE_FOR_ASYNC_INFER_REQUESTS)
-            # Cap the n_requests, because sometimes high_n crashes the system
-            # TODO(Alex): Figure out _why_ hddl crashes when set to 'high'
-            n_requests = max(0, min(low * 2, high))
-        else:
-            # Use the devices default
-            n_requests = 0
+        # If the device is a MULTI device, use the default num_requests
+        is_multi_device = device_name.lower().startswith("multi")
+
+        num_requests = 0
+        if not is_multi_device:
+            # Find the optimal number of InferRequests for this device
+            supported_metrics = self.ie.get_metric(
+                device_name, _SUPPORTED_METRICS)
+            if _RANGE_FOR_ASYNC_INFER_REQUESTS in supported_metrics:
+                low, high, _ = self.ie.get_metric(
+                    device_name, _RANGE_FOR_ASYNC_INFER_REQUESTS)
+                # Cap the num_requests, because setting it too high can crash
+                # TODO(Alex): Figure out _why_ hddl crashes when set to 'high'
+                num_requests = max(0, min(low * 2, high))
 
         self.net: IENetwork = self.ie.read_network(
             model=model_xml,
             weights=weights_bin,
             init_from_buffer=True)
 
-        self.exec_net: ExecutableNetwork = self.ie.load_network(
-            network=self.net,
-            device_name=device_name,
-            num_requests=n_requests)
+        try:
+            self.exec_net: ExecutableNetwork = self.ie.load_network(
+                network=self.net,
+                device_name=device_name,
+                num_requests=num_requests)
+        except RuntimeError as e:
+            if device_name == "CPU":
+                # It's unknown why this would happen when loading
+                # onto CPU, so we re-raise the error.
+                raise
+
+            # This error happens when trying to load onto HDDL or MYRIAD, but
+            # somehow the device fails to work. In these cases, we try again
+            # but load onto 'CPU', which is a safe choice.
+            msg = f"Failed to load {self.__class__} onto device " \
+                  f"{device_name}. Error: '{e}'. " \
+                  f"Trying again with device_name='CPU'"
+            logging.error(msg)
+            self.__init__(
+                model_xml=model_xml,
+                weights_bin=weights_bin,
+                device_name="CPU",
+                ie_core=ie_core)
+            return
 
         # Pull out a couple useful constants
-        self.InferRequestStatusCode = StatusCode
         self.input_blob_names: List[str] = list(self.net.inputs.keys())
         self.output_blob_names: List[str] = list(self.net.outputs.keys())
+
+        # For running threaded requests to the network
+        self._StatusCode = StatusCode
+        self._get_free_request_lock = RLock()
+        self._request_free_events: List[Event] = [
+            Event() for _ in self.exec_net.requests]
+        """This list corresponds 1:1 with request ID's from OpenVINO. 
+        The Events are used to make sure that the request isn't in the middle
+        of running a callback while another thread attempts to start another
+        async request. 
+        
+        The events start as 'set' to indicate they are free to run
+        """
+        for request_free in self._request_free_events:
+            request_free.set()
+
+        # For keeping track of the workload for this backend
+        self._total_requests: int = len(self.exec_net.requests)
+        self._num_ongoing_requests: int = 0
+        self._num_ongoing_requests_lock: RLock = RLock()
+
+    @property
+    def workload(self) -> float:
+        """Returns the percent saturation of this backend. The backend is
+        at max 'efficiency' once the number of ongoing requests is equal to
+        or over number of exec_net.requests
+
+        This won't affect much unless a custom DeviceMapper filter is used that
+        allows multiple Backends to be loaded, eg, a backend for CPU and a
+        backend for HDDL. In those cases, this workload measurement will be used
+        heavily to decide which backend is busier.
+        """
+        return self._num_ongoing_requests / self._total_requests
+
+    def send_to_batch(self, input_data: OV_INPUT_TYPE) -> Queue:
+        """Efficiently send the input to be inferenced by the network
+        :param input_data: Input to the network
+        :returns: A queue that will yield 1 result, the output from the network
+        """
+        out_queue = Queue(maxsize=1)
+
+        with self._get_free_request_lock:
+            # Try to get at least one request
+            request_id = self.exec_net.get_idle_request_id()
+            if request_id < 0:
+                # Since there was no free request, wait for one
+                status = self.exec_net.wait(num_requests=1)
+                if status != self._StatusCode.OK:
+                    raise RuntimeError(
+                        f"Wait for idle request failed with code {status}")
+                request_id = self.exec_net.get_idle_request_id()
+                if request_id < 0:
+                    raise RuntimeError(f"Invalid request_id: {request_id}")
+
+            request = self.exec_net.requests[request_id]
+            request_free = self._request_free_events[request_id]
+
+            def on_result(*args):
+                out_queue.put(request.outputs)
+                request_free.set()
+                with self._num_ongoing_requests_lock:
+                    self._num_ongoing_requests -= 1
+
+            # Make sure that the callback for this request is finished, by
+            # calling request_free.wait().
+            request_free.wait()
+            request_free.clear()
+            request.set_completion_callback(on_result)
+
+            with self._num_ongoing_requests_lock:
+                self._num_ongoing_requests += 1
+            request.async_infer(input_data)
+        return out_queue
 
     def prepare_inputs(self, frame: np.ndarray, frame_input_name: str = None) \
             -> Tuple[OV_INPUT_TYPE, Resize]:
@@ -147,73 +241,13 @@ class BaseOpenVINOBackend(BaseBackend):
         resize.scale_and_offset_detection_nodes(nodes)
         return nodes
 
-    def batch_predict(self, inputs: List[OV_INPUT_TYPE]) \
-            -> List[object]:
-        """Use the network for inference.
-
-        This function will receive a list of inputs and process them as
-        efficiently as possible, optimizing for throughput.
-        :param inputs: A list of openvino style inputs {input_name: ndarray}
-        :returns: A generator of the networks outputs, yielding them in the
-        same order as the inputs
-        """
-
-        inputs: Deque[Tuple[int, OV_INPUT_TYPE]] = deque(enumerate(inputs))
-        """A deque containing tuples of (frame_id, input) for inference"""
-        requests_in_progress: Dict['InferRequest', int] = {}  # noqa: F821
-        """A dictionary of {InferRequest: frame_id} for ongoing requests"""
-        unsent_results: Dict[int: Dict] = {}
-        """A dictionary of {frame_id: output}, the results not yet yielded"""
-        result_ready: Event = Event()
-        """Triggered when any InferRequest finishes processing"""
-        next_frame_id: int = 0
-        """The next frame_id we are awaiting results to send. This guarantees
-        that results are sent in the same order as the inputs."""
-
-        def on_result(request):
-            # Move the requests_in_progress to the unsent_results
-            frame_id = requests_in_progress[request]
-            unsent_results[frame_id] = request.outputs
-
-            # Now remove it from requests_in_progress
-            del requests_in_progress[request]
-            result_ready.set()
-
-        requests = list(self.exec_net.requests)
-
-        # This loop will end when all inputs have been processed and outputs
-        # have been yielded
-        while inputs or unsent_results or requests_in_progress:
-            if len(requests_in_progress):
-                # Block until at least one result is ready
-                result_ready.wait()
-                result_ready.clear()
-            while next_frame_id in unsent_results:
-                yield unsent_results.pop(next_frame_id)
-                next_frame_id += 1
-
-            for request in requests:
-                if not len(inputs):
-                    break
-
-                # For debugging, verify the request is ready to be used
-                request.wait()
-                status = request.wait(0)
-                assert (status == self.InferRequestStatusCode.INFER_NOT_STARTED
-                        or status == self.InferRequestStatusCode.OK)
-
-                # Put another request in the queue, if there are frames
-                frame_id, input_dict = inputs.popleft()
-                requests_in_progress[request] = frame_id
-                request.set_completion_callback(
-                    lambda *args, request=request: on_result(request))
-                request.async_infer(input_dict)
-
     def close(self):
-        super().close()
         # Since there's no way to tell OpenVINO to close sockets to HDDL
         # (or other plugins), dereferencing everything is the safest way
         # to go. Without this, OpenVINO seems to crash the HDDL daemon.
+        del self.ie
+        del self.net
+        del self.exec_net
         self.ie = None
         self.net = None
         self.exec_net = None
