@@ -85,6 +85,7 @@ class BaseOpenVINOBackend(BaseBackend):
         self.output_blob_names: List[str] = list(self.net.outputs.keys())
 
         # For running threaded requests to the network
+        self._StatusCode = StatusCode
         self._get_free_request_lock = RLock()
         self._request_free_events: List[Event] = [
             Event() for _ in self.exec_net.requests]
@@ -128,7 +129,10 @@ class BaseOpenVINOBackend(BaseBackend):
             request_id = self.exec_net.get_idle_request_id()
             if request_id < 0:
                 # Since there was no free request, wait for one
-                self.exec_net.wait(num_requests=1)
+                status = self.exec_net.wait(num_requests=1)
+                if status != self._StatusCode.OK:
+                    raise RuntimeError(
+                        f"Wait for idle request failed with code {status}")
                 request_id = self.exec_net.get_idle_request_id()
                 if request_id < 0:
                     raise RuntimeError(f"Invalid request_id: {request_id}")
