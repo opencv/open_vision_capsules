@@ -2,14 +2,15 @@ import multiprocessing
 import threading
 import queue
 import gc
-from typing import Type, Dict, Tuple, Any, NoReturn
+from typing import List, Dict, Tuple, Any, NoReturn
 from concurrent.futures import Future
 from uuid import uuid4, UUID
 from typing import NamedTuple, Type
 
 import numpy as np
 
-from vcap import BaseBackend, DETECTION_NODE_TYPE
+from vcap import BaseBackend, DETECTION_NODE_TYPE, DetectionNode, OPTION_TYPE
+from vcap.stream_state import BaseStreamState
 
 
 class RpcRequest(NamedTuple):
@@ -67,6 +68,11 @@ def _rpc_server(
         try:
             fn = getattr(backend, request.function)  # noqa: F821
             result = fn(*request.args, **request.kwargs)
+
+            if request.function == "process_frame":
+                # Special case for 'process_frame': We return the input nodes
+                # to the function back to the parent process
+                result = (request.kwargs["detection_node"], result)
         except BaseException as e:
             result = None
             exception = e
@@ -186,8 +192,59 @@ class BackendRpcProcess(BaseBackend):
         self._outgoing.put(request)
         return future.result()
 
-    def process_frame(self, *args, **kwargs) -> DETECTION_NODE_TYPE:
-        return self._rpc_call("process_frame", *args, **kwargs)
+    def process_frame(self,
+                      frame: np.ndarray,
+                      detection_node: DETECTION_NODE_TYPE,
+                      options: Dict[str, OPTION_TYPE],
+                      state: BaseStreamState) \
+            -> DETECTION_NODE_TYPE:
+
+        # Assign individiaul detection nodes with a __object_id in case they
+        # are modified in the other process, so that they can then be updated
+        input_node_registry: Dict[int, DetectionNode] = {}
+        if detection_node is not None:
+            try:
+                for node in detection_node:
+                    node.__object_id = id(node)
+                    input_node_registry[node.__object_id] = node
+            except TypeError:
+                detection_node.__object_id = id(detection_node)
+                input_node_registry[node.__object_id] = node
+
+        # Run the process_frame method
+        # in_nodes is the nodes that were fed as inputs
+        # out_nodes is the nodes the were output by the process_frame method
+        in_nodes, out_nodes = self._rpc_call(
+            "process_frame",
+            frame=frame,
+            detection_node=detection_node,
+            options=options,
+            state=state)
+
+        # Try to match nodes
+        nodes_to_update: List[DetectionNode] = []
+        for detection_node_type in (in_nodes, out_nodes):
+            if detection_node_type is not None:
+                try:
+                    for node in detection_node_type:
+                        nodes_to_update.append(node)
+                except TypeError:
+                    nodes_to_update.append(detection_node_type)
+
+        for detection_node in nodes_to_update:
+            if (not hasattr(detection_node, "__object_id")
+                    or detection_node.__object_id not in input_node_registry):
+                # If this is a new detection node, not one that already exited
+                # then there is nothing to 'update'
+                continue
+
+            input_node = input_node_registry[detection_node.__object_id]
+            input_node.attributes.update(detection_node.attributes)
+            if not input_node.track_id:
+                input_node.track_id = detection_node.track_id
+            if not input_node.encoding:
+                input_node.encoding = detection_node.encoding
+        return out_nodes
 
     def distances(self, *args, **kwargs) -> np.ndarray:
         return self._rpc_call("distances", *args, **kwargs)
