@@ -194,7 +194,8 @@ class BaseOpenVINOBackend(BaseBackend):
             self, results: np.ndarray,
             resize: Resize,
             label_map: Dict[int, str],
-            min_confidence: float = 0.0) -> List[DetectionNode]:
+            min_confidence: float = 0.0,
+            boxes_output_name: str = None) -> List[DetectionNode]:
         """A helper method to take results from a detection-type network.
         :param results: The inference results from the network
         :param resize: A Resize object that was used to resize the image to
@@ -202,10 +203,12 @@ class BaseOpenVINOBackend(BaseBackend):
         :param label_map: A dictionary mapping integers to class_names.
         :param min_confidence: Filter out detections that have a confidence
         less than this number.
+        :param boxes_output_name: The name of output that carries the bounding
+        box information to be parsed. Default=self.output_blob_names[0]
         :returns: A list of DetectionNodes, in this case representing bounding
         boxes.
         """
-        output_blob_name = self.output_blob_names[0]
+        output_blob_name = boxes_output_name or self.output_blob_names[0]
         inference_results = results[output_blob_name]
 
         _, _, h, w = self.net.inputs[self.input_blob_names[0]].shape
