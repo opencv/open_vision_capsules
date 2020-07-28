@@ -240,9 +240,10 @@ class BackendRpcProcess(BaseBackend):
 
             input_node = input_nodes_by_id[detection_node._object_id]
             input_node.attributes.update(detection_node.attributes)
-            if not input_node.track_id:
+            input_node.extra_data.update(detection_node.extra_data)
+            if input_node.track_id is None:
                 input_node.track_id = detection_node.track_id
-            if not input_node.encoding:
+            if input_node.encoding is None:
                 input_node.encoding = detection_node.encoding
         return out_nodes
 
