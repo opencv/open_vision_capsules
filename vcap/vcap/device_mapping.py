@@ -114,7 +114,7 @@ class DeviceMapper:
                 filtered += [d for d in devices
                              if d.lower().startswith("myriad")]
 
-            if len(filtered):
+            if len(filtered) > 1:
                 return ["MULTI:" + ",".join(filtered)]
             else:
                 return filtered
