@@ -201,15 +201,15 @@ class BackendRpcProcess(BaseBackend):
 
         # Assign individiaul detection nodes with a __object_id in case they
         # are modified in the other process, so that they can then be updated
-        input_node_registry: Dict[int, DetectionNode] = {}
+        input_nodes_by_id: Dict[int, DetectionNode] = {}
         if detection_node is not None:
             try:
                 for node in detection_node:
                     node.__object_id = id(node)
-                    input_node_registry[node.__object_id] = node
+                    input_nodes_by_id[node.__object_id] = node
             except TypeError:
                 detection_node.__object_id = id(detection_node)
-                input_node_registry[node.__object_id] = node
+                input_nodes_by_id[detection_node.__object_id] = detection_node
 
         # Run the process_frame method
         # in_nodes is the nodes that were fed as inputs
@@ -233,12 +233,12 @@ class BackendRpcProcess(BaseBackend):
 
         for detection_node in nodes_to_update:
             if (not hasattr(detection_node, "__object_id")
-                    or detection_node.__object_id not in input_node_registry):
+                    or detection_node.__object_id not in input_nodes_by_id):
                 # If this is a new detection node, not one that already exited
                 # then there is nothing to 'update'
                 continue
 
-            input_node = input_node_registry[detection_node.__object_id]
+            input_node = input_nodes_by_id[detection_node.__object_id]
             input_node.attributes.update(detection_node.attributes)
             if not input_node.track_id:
                 input_node.track_id = detection_node.track_id
