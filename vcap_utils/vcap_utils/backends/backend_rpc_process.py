@@ -244,11 +244,12 @@ class BackendRpcProcess(BaseBackend):
         # the worker process.
         return_nodes = []
         for detection_node in nodes_to_update:
+            is_output = out_nodes is not None and detection_node in out_nodes
             if (not hasattr(detection_node, "_object_id")
                     or detection_node._object_id not in input_nodes_by_id):
                 # If this is a new detection node, not one that already existed
                 # then there is nothing to 'update'
-                if detection_node in out_nodes:
+                if is_output:
                     # If this is one of the nodes output by the process_frame
                     return_nodes.append(detection_node)
                 continue
@@ -261,7 +262,7 @@ class BackendRpcProcess(BaseBackend):
             if input_node.encoding is None:
                 input_node.encoding = detection_node.encoding
 
-            if detection_node in out_nodes:
+            if is_output:
                 # Since the process_frame output one of the nodes that was
                 # originally an input, we return the input, not the copy
                 return_nodes.append(input_node)
