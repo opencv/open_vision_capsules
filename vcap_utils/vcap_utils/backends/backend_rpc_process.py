@@ -259,7 +259,7 @@ class BackendRpcProcess(BaseBackend):
         if out_nodes is None:
             return None
         elif isinstance(out_nodes, DetectionNode):
-            return out_nodes[0]
+            return retval[0]
         else:
             return retval
 
