@@ -237,7 +237,7 @@ class BackendRpcProcess(BaseBackend):
                     or detection_node._object_id not in input_nodes_by_id):
                 # If this is a new detection node, not one that already existed
                 # then there is nothing to 'update'
-                if detection_node in out_nodes:
+                if detection_node in out_nodes_list:
                     retval.append(detection_node)
                 continue
 
@@ -249,7 +249,7 @@ class BackendRpcProcess(BaseBackend):
             if input_node.encoding is None:
                 input_node.encoding = detection_node.encoding
 
-            if detection_node in out_nodes:
+            if detection_node in out_nodes_list:
                 # Since the process_frame output one of the nodes that was
                 # originally an input, we return the input, not the copy
                 retval.append(input_node)
