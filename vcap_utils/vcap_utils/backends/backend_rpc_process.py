@@ -211,14 +211,9 @@ class BackendRpcProcess(BaseBackend):
         # Assign individual detection nodes with a _object_id in case they
         # are modified in the other process, so that they can then be updated
         input_nodes_by_id: Dict[int, DetectionNode] = {}
-        if detection_node is not None:
-            try:
-                for node in detection_node:
-                    node._object_id = id(node)
-                    input_nodes_by_id[node._object_id] = node
-            except TypeError:
-                detection_node._object_id = id(detection_node)
-                input_nodes_by_id[detection_node._object_id] = detection_node
+        for node in self._flatten_node(detection_node):
+            node._object_id = id(node)
+            input_nodes_by_id[node._object_id] = node
 
         # Run the process_frame method
         # in_nodes is the nodes that were fed as inputs
@@ -231,27 +226,19 @@ class BackendRpcProcess(BaseBackend):
             state=state)
 
         # Create a flat list of nodes that came from the worker process
-        nodes_to_update: List[DetectionNode] = []
-        for detection_node_type in (in_nodes, out_nodes):
-            if detection_node_type is not None:
-                try:
-                    for node in detection_node_type:
-                        nodes_to_update.append(node)
-                except TypeError:
-                    nodes_to_update.append(detection_node_type)
+        in_nodes_list = self._flatten_node(in_nodes)
+        out_nodes_list = self._flatten_node(out_nodes)
 
         # Update any nodes from this process with new information from
         # the worker process.
-        return_nodes = []
-        for detection_node in nodes_to_update:
-            is_output = out_nodes is not None and detection_node in out_nodes
+        retval = []
+        for detection_node in in_nodes_list + out_nodes_list:
             if (not hasattr(detection_node, "_object_id")
                     or detection_node._object_id not in input_nodes_by_id):
                 # If this is a new detection node, not one that already existed
                 # then there is nothing to 'update'
-                if is_output:
-                    # If this is one of the nodes output by the process_frame
-                    return_nodes.append(detection_node)
+                if detection_node in out_nodes:
+                    retval.append(detection_node)
                 continue
 
             input_node = input_nodes_by_id[detection_node._object_id]
@@ -262,11 +249,28 @@ class BackendRpcProcess(BaseBackend):
             if input_node.encoding is None:
                 input_node.encoding = detection_node.encoding
 
-            if is_output:
+            if detection_node in out_nodes:
                 # Since the process_frame output one of the nodes that was
                 # originally an input, we return the input, not the copy
-                return_nodes.append(input_node)
-        return return_nodes
+                retval.append(input_node)
+
+        # Now we try to match the DETECTION_NODE_TYPE from the original
+        # process_frame method, in order to be as correct as possible
+        if out_nodes is None:
+            return None
+        elif isinstance(out_nodes, DetectionNode):
+            return out_nodes[0]
+        else:
+            return retval
+
+    @staticmethod
+    def _flatten_node(node: DETECTION_NODE_TYPE) -> List[DetectionNode]:
+        if node is None:
+            return []
+        elif isinstance(node, DetectionNode):
+            return [node]
+        else:
+            return list(node)
 
     def distances(self, *args, **kwargs) -> np.ndarray:
         return self._rpc_call("distances", *args, **kwargs)
