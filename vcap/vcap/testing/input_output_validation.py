@@ -217,6 +217,12 @@ def perform_capsule_tests(unpackaged_capsule_dir: Union[Path, str],
                              .with_suffix(CAPSULE_EXTENSION))
     package_capsule(unpackaged_capsule_dir, packaged_capsule_path)
 
+    # Start the test with no threads running and garbage collection clean,
+    # so that our __del__ mock to BaseCapsule doesn't get called from
+    # other objects that are yet to be garbage collected
+    verify_all_threads_closed(allowable_threads)
+    gc.collect()
+
     with mock.patch.object(BaseCapsule, '__del__') as patched_del:
         capsule = load_capsule_with_one_device(packaged_capsule_path)
         _test_capsule_input_output(capsule, image_paths)
@@ -228,20 +234,26 @@ def perform_capsule_tests(unpackaged_capsule_dir: Union[Path, str],
         # __del__ WOULD have been called.
         capsule.close()
 
+        # Check that capsule.close() successfully killed any worker threads
+        verify_all_threads_closed(allowable_threads)
+
         referrers = gc.get_referrers(capsule)
-        assert len(referrers) <= 1, \
+        assert len(referrers) == 1, \
             "No one else should have a reference to this capsule anymore! " \
             f"There were {len(referrers)} references from: {referrers}. " \
             f"Capsule in question: {capsule}"
-        assert patched_del.call_count == 0
+        assert patched_del.call_count == 0, \
+            "__del__ should only be called when the capsule is garbage " \
+            "collected!"
 
         # Get rid of the last reference to the capsule
         del capsule
 
         gc.collect()
 
-        assert patched_del.call_count == 1, \
-            "Oh no! This capsule is probably keeping a reference to itself. " \
-            "This is a big no no!"
+        assert patched_del.call_count >= 1, \
+            "The capsule didn't get garbage collected! The capsule must be " \
+            "keeping a reference to itself."
 
+    # Sanity check that the capsules __del__ didn't spawn threads
     verify_all_threads_closed(allowable_threads)
