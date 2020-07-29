@@ -93,46 +93,30 @@ class DeviceMapper:
         specifically. This variable will be deprecated and removed after a
         short testing period.
 
-        OPENVINO_ALLOWABLE_DEVICES can be
-            "", "HDDL", or "MYRIAD"
         The device "CPU" is _always_ allowed and always loaded onto and cannot
         be excluded.
 
         Here are the cases:
-        ['CPU:0', 'MYRIAD', ...] => ["MULTI:CPU,MYRIAD.1,MYRIAD.2,..."]
-            If MYRIAD is whitelisted. Else, it will return ["CPU"]
         ['CPU:0', 'HDDL', ...] =>  ["MULTI:CPU,HDDL"]
-            If HDDL is whitelisted. Else, it will return ["CPU"]
+
         ['CPU:0'] => ["CPU"]
             Always load onto CPU.
         """
 
         def filter_func(devices):
-            allowed_device_type = os.environ.get(
-                "OPENVINO_ALLOWABLE_DEVICES", None)
+            filtered = ["CPU"]
 
-            allowed_devices = []
-            if allowed_device_type in (None, ""):
-                logging.info("No devices specified in "
-                             "OPENVINO_ALLOWABLE_DEVICES. Loading onto CPU.")
-            elif allowed_device_type.lower() in ("myriad", "hddl"):
-                allowed_devices = [
-                    d for d in devices
-                    if d.lower().startswith(allowed_device_type.lower())]
-                if not len(allowed_devices):
-                    logging.warning("OPENVINO_ALLOWABLE_DEVICES specified "
-                                    f"{allowed_device_type}, but no such "
-                                    f"device was found.")
+            # Add any existing special devices, favoring HDDL over MYRIAD
+            if any(d.lower().startswith("hddl") for d in devices):
+                filtered += [d for d in devices
+                             if d.lower().startswith("hddl")]
             else:
-                logging.warning(
-                    "Invalid value for OPENVINO_ALLOWABLE_DEVICES. "
-                    f"Loading onto CPU only. Value: '{allowed_device_type}'")
+                filtered += [d for d in devices
+                             if d.lower().startswith("myriad")]
 
-            devices = ["CPU"] + allowed_devices
-
-            if len(allowed_devices):
-                return ["MULTI:" + ",".join(devices)]
+            if len(filtered) > 1:
+                return ["MULTI:" + ",".join(filtered)]
             else:
-                return devices
+                return filtered
 
         return DeviceMapper(filter_func=filter_func)
