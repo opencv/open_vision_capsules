@@ -2,14 +2,20 @@ import multiprocessing
 import threading
 import queue
 import gc
-from typing import Type, Dict, Tuple, Any, NoReturn
+from typing import List, Dict, Tuple, Any, NoReturn
 from concurrent.futures import Future
-from uuid import uuid4, UUID
+from uuid import uuid4
 from typing import NamedTuple, Type
 
 import numpy as np
 
-from vcap import BaseBackend, DETECTION_NODE_TYPE
+from vcap import (
+    BaseBackend,
+    DETECTION_NODE_TYPE,
+    DetectionNode,
+    OPTION_TYPE,
+    BaseStreamState
+)
 
 
 class RpcRequest(NamedTuple):
@@ -67,6 +73,12 @@ def _rpc_server(
         try:
             fn = getattr(backend, request.function)  # noqa: F821
             result = fn(*request.args, **request.kwargs)
+
+            if request.function == "process_frame":
+                # Special case for 'process_frame': We return the input nodes
+                # to the function back to the parent process, in case the
+                # capsule modified something in-place.
+                result = (request.kwargs["detection_node"], result)
         except BaseException as e:
             result = None
             exception = e
@@ -186,8 +198,79 @@ class BackendRpcProcess(BaseBackend):
         self._outgoing.put(request)
         return future.result()
 
-    def process_frame(self, *args, **kwargs) -> DETECTION_NODE_TYPE:
-        return self._rpc_call("process_frame", *args, **kwargs)
+    def process_frame(self,
+                      frame: np.ndarray,
+                      detection_node: DETECTION_NODE_TYPE,
+                      options: Dict[str, OPTION_TYPE],
+                      state: BaseStreamState) \
+            -> DETECTION_NODE_TYPE:
+        """Sends a frame to be processed by a worker process.
+        The detection_node input is carefully kept track of, to see if the
+        worker process made any modifications to it.
+        """
+        # Assign individual detection nodes with a _object_id in case they
+        # are modified in the other process, so that they can then be updated
+        input_nodes_by_id: Dict[int, DetectionNode] = {}
+        for node in self._flatten_node(detection_node):
+            node._object_id = id(node)
+            input_nodes_by_id[node._object_id] = node
+
+        # Run the process_frame method
+        # in_nodes is the nodes that were fed as inputs
+        # out_nodes is the nodes the were output by the process_frame method
+        in_nodes, out_nodes = self._rpc_call(
+            "process_frame",
+            frame=frame,
+            detection_node=detection_node,
+            options=options,
+            state=state)
+
+        # Create a flat list of nodes that came from the worker process
+        in_nodes_list: List[DetectionNode] = self._flatten_node(in_nodes)
+        out_nodes_list: List[DetectionNode] = self._flatten_node(out_nodes)
+
+        # Update any nodes from this process with new information from
+        # the worker process.
+        return_nodes: List[DetectionNode] = []
+        for detection_node in in_nodes_list + out_nodes_list:
+            if (not hasattr(detection_node, "_object_id")
+                    or detection_node._object_id not in input_nodes_by_id):
+                # If this is a new detection node, not one that already existed
+                # then there is nothing to 'update'
+                if detection_node in out_nodes_list:
+                    return_nodes.append(detection_node)
+                continue
+
+            input_node = input_nodes_by_id[detection_node._object_id]
+            input_node.attributes.update(detection_node.attributes)
+            input_node.extra_data.update(detection_node.extra_data)
+            if input_node.track_id is None:
+                input_node.track_id = detection_node.track_id
+            if input_node.encoding is None:
+                input_node.encoding = detection_node.encoding
+
+            if detection_node in out_nodes_list:
+                # Since the process_frame output one of the nodes that was
+                # originally an input, we return the input, not the copy
+                return_nodes.append(input_node)
+
+        # Now we try to match the DETECTION_NODE_TYPE from the original
+        # process_frame method, in order to be as correct as possible
+        if out_nodes is None:
+            return None
+        elif isinstance(out_nodes, DetectionNode):
+            return return_nodes[0]
+        else:
+            return return_nodes
+
+    @staticmethod
+    def _flatten_node(node: DETECTION_NODE_TYPE) -> List[DetectionNode]:
+        if node is None:
+            return []
+        elif isinstance(node, DetectionNode):
+            return [node]
+        else:
+            return list(node)
 
     def distances(self, *args, **kwargs) -> np.ndarray:
         return self._rpc_call("distances", *args, **kwargs)
