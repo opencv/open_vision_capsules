@@ -104,19 +104,20 @@ class DeviceMapper:
         """
 
         def filter_func(devices):
-            filtered = ["CPU"]
 
-            # Add any existing special devices, favoring HDDL over MYRIAD
-            if any(d.lower().startswith("hddl") for d in devices):
-                filtered += [d for d in devices
-                             if d.lower().startswith("hddl")]
-            else:
-                filtered += [d for d in devices
-                             if d.lower().startswith("myriad")]
+            devices_by_priority = os.environ.get(
+                "OPENVINO_DEVICE_PRIORITY",
+                "CPU,HDDL").split(",")
+            load_to_devices = []
 
-            if len(filtered) > 1:
-                return ["MULTI:" + ",".join(filtered)]
+            for device in devices_by_priority:
+                for existing_device in devices:
+                    if existing_device.lower().startswith(device.lower()):
+                        load_to_devices.append(device)
+
+            if len(load_to_devices) > 1:
+                return ["MULTI:" + ",".join(load_to_devices)]
             else:
-                return filtered
+                return load_to_devices
 
         return DeviceMapper(filter_func=filter_func)
