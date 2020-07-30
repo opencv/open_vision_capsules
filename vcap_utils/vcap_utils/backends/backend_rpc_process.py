@@ -226,19 +226,19 @@ class BackendRpcProcess(BaseBackend):
             state=state)
 
         # Create a flat list of nodes that came from the worker process
-        in_nodes_list = self._flatten_node(in_nodes)
-        out_nodes_list = self._flatten_node(out_nodes)
+        in_nodes_list: List[DetectionNode] = self._flatten_node(in_nodes)
+        out_nodes_list: List[DetectionNode] = self._flatten_node(out_nodes)
 
         # Update any nodes from this process with new information from
         # the worker process.
-        retval = []
+        return_nodes: List[DetectionNode] = []
         for detection_node in in_nodes_list + out_nodes_list:
             if (not hasattr(detection_node, "_object_id")
                     or detection_node._object_id not in input_nodes_by_id):
                 # If this is a new detection node, not one that already existed
                 # then there is nothing to 'update'
                 if detection_node in out_nodes_list:
-                    retval.append(detection_node)
+                    return_nodes.append(detection_node)
                 continue
 
             input_node = input_nodes_by_id[detection_node._object_id]
@@ -252,16 +252,16 @@ class BackendRpcProcess(BaseBackend):
             if detection_node in out_nodes_list:
                 # Since the process_frame output one of the nodes that was
                 # originally an input, we return the input, not the copy
-                retval.append(input_node)
+                return_nodes.append(input_node)
 
         # Now we try to match the DETECTION_NODE_TYPE from the original
         # process_frame method, in order to be as correct as possible
         if out_nodes is None:
             return None
         elif isinstance(out_nodes, DetectionNode):
-            return retval[0]
+            return return_nodes[0]
         else:
-            return retval
+            return return_nodes
 
     @staticmethod
     def _flatten_node(node: DETECTION_NODE_TYPE) -> List[DetectionNode]:
