@@ -283,7 +283,14 @@ class BackendRpcProcess(BaseBackend):
     def close(self) -> None:
         # Close the underlying backend
         self._rpc_call("close")
+
         # Close the server process and the client thread
         self._shutdown.set()
         self._process.join()
         self._rpc_thread.join()
+
+        self._incoming.close()
+        self._outgoing.close()
+
+        self._incoming.join_thread()
+        self._outgoing.join_thread()
