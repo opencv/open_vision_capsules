@@ -18,7 +18,7 @@ setup(
         "pycryptodomex==3.9.7",
         "scipy==1.4.1",
         "scikit-learn==0.22.2",
-        "numpy>=1.18.4,<2",
+        "numpy>=1.16,<2",
         "tensorflow-gpu==1.15.2",
     ],
     extras_require={
