@@ -7,48 +7,31 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.6']
-    
+
     steps:
     - uses: actions/checkout@v2
       with:
         # Include tags in the checkout
         fetch-depth: 0
-    - name: Set up Python ${{ matrix.python-version }}
+
+    - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Get Pip cache directory
-      id: pip-cache
-      run: |
-        echo "::set-output name=dir::$(pip cache dir)"
-    - uses: actions/cache@v1
-      id: cache
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key: ${{ runner.os }}-${{ hashFiles('**/setup.py') }}-pip-cache
-        restore-keys: |
-          ${{ runner.os }}-pip-cache
-    - name: Install dependencies
-      run: |
-        pip install --upgrade setuptools wheel twine
+        python-version: 3.6
+
+    - name: Install poetry
+      uses: dschep/install-poetry-action@v1.3
+
     - name: Publish vcap
       working-directory: ./vcap
       env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        PRE_RELEASE_SUFFIX=$(python3 ../.github/workflows/pre_release_suffix.py) \
-          python3 setup.py sdist bdist_wheel
-        python3 -m twine upload dist/*
+        POETRY_HTTP_BASIC_PYPI_USERNAME: __token__
+        POETRY_HTTP_BASIC_PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: poetry publish
+
     - name: Publish vcap-utils
       working-directory: ./vcap_utils
       env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        PRE_RELEASE_SUFFIX=$(python3 ../.github/workflows/pre_release_suffix.py) \
-          python3 setup.py sdist bdist_wheel
-        python3 -m twine upload dist/*
+        POETRY_HTTP_BASIC_PYPI_USERNAME: __token__
+        POETRY_HTTP_BASIC_PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: poetry publish
