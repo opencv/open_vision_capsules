@@ -10,42 +10,48 @@ jobs:
   test:
 
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.6]
 
     steps:
-    - uses: actions/checkout@v2
-      with:
-        # Include tags in the checkout
-        fetch-depth: 0
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Get Pip cache directory
-      id: pip-cache
-      run: |
-        echo "::set-output name=dir::$(pip cache dir)"
-    - uses: actions/cache@v1
-      id: cache
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key: ${{ runner.os }}-${{ hashFiles('**/setup.py') }}-pip-cache
-        restore-keys: |
-          ${{ runner.os }}-pip-cache 
+      - uses: actions/checkout@v2
+        with:
+          # Include tags in the checkout
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+
+      - name: Install poetry
+        uses: dschep/install-poetry-action@v1.3
+
+      - name: Configure poetry for caching
+        run: |
+          # https://github.com/dschep/install-poetry-action/issues/11
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project false
+          poetry config cache-dir ~/.poetry
+          poetry config virtualenvs.path ~/.poetry/virtualenv
+
+      - name: Cache poetry virtualenv
+        uses: actions/cache@v2
+        id: poetry-cache
+        with:
+          path: ~/.poetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest
-        pip install -e "./vcap[easy,tests]"
-        pip install -e "./vcap_utils[tests]"
+      working-directory: ./vcap_utils
+      run: poetry install -E easy
+
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=79 --statistics
+
     - name: Test with pytest
-      run: |
-        pytest
+      run: pytest
