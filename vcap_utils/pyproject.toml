@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vcap-utils"
-version = "0.2.4"
+version = "0.2.3"
 description = "Utilities for creating OpenVisionCapsules easily in Python"
 authors = ["Aotu"]
 license = "BSD-3-Clause"
@@ -14,11 +14,19 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.6"
-vcap = "0.2.4"
+vcap = { version = "0.2.3" }
+
+opencv-python-headless = { version = "^4.1.2", optional = true }
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.0.1"
 mock = "^4.0.2"
+flake8 = "^3.8.3"
+
+[tool.poetry.extras]
+easy = [
+    "opencv-python-headless"
+]
 
 [build-system]
 requires = ["poetry>=0.12"]

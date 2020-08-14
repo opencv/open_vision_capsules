@@ -50,6 +50,23 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 version = "0.4.3"
 
 [[package]]
+category = "dev"
+description = "the modular source code checker: pep8 pyflakes and co"
+name = "flake8"
+optional = false
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
+version = "3.8.3"
+
+[package.dependencies]
+mccabe = ">=0.6.0,<0.7.0"
+pycodestyle = ">=2.6.0a1,<2.7.0"
+pyflakes = ">=2.2.0,<2.3.0"
+
+[package.dependencies.importlib-metadata]
+python = "<3.8"
+version = "*"
+
+[[package]]
 category = "main"
 description = "Python AST that abstracts the underlying Python version"
 name = "gast"
@@ -176,6 +193,14 @@ testing = ["coverage", "pyyaml"]
 
 [[package]]
 category = "dev"
+description = "McCabe checker, plugin for flake8"
+name = "mccabe"
+optional = false
+python-versions = "*"
+version = "0.6.1"
+
+[[package]]
+category = "dev"
 description = "Rolling backport of unittest.mock for all Pythons"
 name = "mock"
 optional = false
@@ -205,6 +230,14 @@ version = "1.19.1"
 
 [[package]]
 category = "main"
+description = "Wrapper package for OpenCV python bindings."
+name = "opencv-python-headless"
+optional = true
+python-versions = ">=3.5"
+version = "4.4.0.40"
+
+[[package]]
+category = "main"
 description = "Optimizing numpys einsum function"
 name = "opt-einsum"
 optional = false
@@ -219,7 +252,7 @@ docs = ["sphinx (1.2.3)", "sphinxcontrib-napoleon", "sphinx-rtd-theme", "numpydo
 tests = ["pytest", "pytest-cov", "pytest-pep8"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Core utilities for Python packages"
 name = "packaging"
 optional = false
@@ -267,6 +300,14 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "1.9.0"
 
 [[package]]
+category = "dev"
+description = "Python style guide checker"
+name = "pycodestyle"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "2.6.0"
+
+[[package]]
 category = "main"
 description = "Cryptographic library for Python"
 name = "pycryptodomex"
@@ -276,6 +317,14 @@ version = "3.9.8"
 
 [[package]]
 category = "dev"
+description = "passive checker of Python programs"
+name = "pyflakes"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+version = "2.2.0"
+
+[[package]]
+category = "main"
 description = "Python parsing module"
 name = "pyparsing"
 optional = false
@@ -437,8 +486,11 @@ description = "A built-package format for Python"
 marker = "python_version >= \"3\""
 name = "wheel"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-version = "0.34.2"
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
+version = "0.35.0"
+
+[package.dependencies]
+packaging = ">=20.2"
 
 [package.extras]
 test = ["pytest (>=3.0.0)", "pytest-cov"]
@@ -464,8 +516,11 @@ version = "3.1.0"
 docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
+[extras]
+easy = ["opencv-python-headless"]
+
 [metadata]
-content-hash = "6f789077352dad0367549915f91c9d6e3525b8fe5f423b9d4ab3e73ff8499eb9"
+content-hash = "97758eb88e4ed9b3fb32a9de76f4fedf970a3e5b4d1b6d09ac583247b10e6047"
 lock-version = "1.0"
 python-versions = "^3.6"
 
@@ -488,6 +543,10 @@ attrs = [
 colorama = [
     {file = "colorama-0.4.3-py2.py3-none-any.whl", hash = "sha256:7d73d2a99753107a36ac6b455ee49046802e59d9d076ef8e47b61499fa29afff"},
     {file = "colorama-0.4.3.tar.gz", hash = "sha256:e96da0d330793e2cb9485e9ddfd918d456036c7149416295932478192f4436a1"},
+]
+flake8 = [
+    {file = "flake8-3.8.3-py2.py3-none-any.whl", hash = "sha256:15e351d19611c887e482fb960eae4d44845013cc142d42896e9862f775d8cf5c"},
+    {file = "flake8-3.8.3.tar.gz", hash = "sha256:f04b9fcbac03b0a3e58c0ab3a0ecc462e023a9faf046d57794184028123aa208"},
 ]
 gast = [
     {file = "gast-0.2.2.tar.gz", hash = "sha256:fe939df4583692f0512161ec1c880e0a10e71e6a232da045ab8edd3756fbadf0"},
@@ -593,6 +652,10 @@ markdown = [
     {file = "Markdown-3.2.2-py3-none-any.whl", hash = "sha256:c467cd6233885534bf0fe96e62e3cf46cfc1605112356c4f9981512b8174de59"},
     {file = "Markdown-3.2.2.tar.gz", hash = "sha256:1fafe3f1ecabfb514a5285fca634a53c1b32a81cb0feb154264d55bf2ff22c17"},
 ]
+mccabe = [
+    {file = "mccabe-0.6.1-py2.py3-none-any.whl", hash = "sha256:ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42"},
+    {file = "mccabe-0.6.1.tar.gz", hash = "sha256:dd8d182285a0fe56bace7f45b5e7d1a6ebcbf524e8f3bd87eb0f125271b8831f"},
+]
 mock = [
     {file = "mock-4.0.2-py3-none-any.whl", hash = "sha256:3f9b2c0196c60d21838f307f5825a7b86b678cedc58ab9e50a8988187b4d81e0"},
     {file = "mock-4.0.2.tar.gz", hash = "sha256:dd33eb70232b6118298d516bbcecd26704689c386594f0f3c4f13867b2c56f72"},
@@ -628,6 +691,29 @@ numpy = [
     {file = "numpy-1.19.1-cp38-cp38-win_amd64.whl", hash = "sha256:92feb989b47f83ebef246adabc7ff3b9a59ac30601c3f6819f8913458610bdcc"},
     {file = "numpy-1.19.1-pp36-pypy36_pp73-manylinux2010_x86_64.whl", hash = "sha256:e1b1dc0372f530f26a03578ac75d5e51b3868b9b76cd2facba4c9ee0eb252ab1"},
     {file = "numpy-1.19.1.zip", hash = "sha256:b8456987b637232602ceb4d663cb34106f7eb780e247d51a260b84760fd8f491"},
+]
+opencv-python-headless = [
+    {file = "opencv-python-headless-4.4.0.40.tar.gz", hash = "sha256:4f6560c279a096602960c9234fad1e9c89b36b22da7580149304fda91599cdb1"},
+    {file = "opencv_python_headless-4.4.0.40-cp35-cp35m-macosx_10_13_x86_64.whl", hash = "sha256:1db432e5f45ad3cad47176c345fd29b4dcd0fa2e90b996de1ddfd979bce43371"},
+    {file = "opencv_python_headless-4.4.0.40-cp35-cp35m-manylinux2014_i686.whl", hash = "sha256:4a114a6f92a0dffd674491477595cf80e62264e2327ad0741d32484fd50cec5c"},
+    {file = "opencv_python_headless-4.4.0.40-cp35-cp35m-manylinux2014_x86_64.whl", hash = "sha256:7bfdf34c09a62b22d698c2f335c21047ba0430004f4f43b5ef72bd5284c6bf6e"},
+    {file = "opencv_python_headless-4.4.0.40-cp35-cp35m-win32.whl", hash = "sha256:3af570e326d19edebfe082cf4af240f3c318157ec157f954fbda4a344c442dd9"},
+    {file = "opencv_python_headless-4.4.0.40-cp35-cp35m-win_amd64.whl", hash = "sha256:fa8c4536f8a4264f6fb0b030c81cd84a2df0705eed2dd722f41e5f97b9df01d1"},
+    {file = "opencv_python_headless-4.4.0.40-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:0ba87d4fed2ec4a19c4f9ee84fb71ec2c144e4efcb0fb31e7d339c585f9b2bcb"},
+    {file = "opencv_python_headless-4.4.0.40-cp36-cp36m-manylinux2014_i686.whl", hash = "sha256:880c69983c51c42ba5d017bf3a1414b007ce53e1a8c8edf66c42f1a6f312d7ac"},
+    {file = "opencv_python_headless-4.4.0.40-cp36-cp36m-manylinux2014_x86_64.whl", hash = "sha256:ecf93fc299510728e6baa1f4ea0e3dbaccf6ebf5e666eae44d7a4928b67a5850"},
+    {file = "opencv_python_headless-4.4.0.40-cp36-cp36m-win32.whl", hash = "sha256:10275fdb1333a3760d70830eba947450c3239a4c46f8972ceed2b1b074dbc063"},
+    {file = "opencv_python_headless-4.4.0.40-cp36-cp36m-win_amd64.whl", hash = "sha256:5bdbfa724c15b5aec489064e6a2c4b5c047dcd501e2a0deec143f4ddd3e4d4a7"},
+    {file = "opencv_python_headless-4.4.0.40-cp37-cp37m-macosx_10_13_x86_64.whl", hash = "sha256:8ffd36371e4f6cb7ba004eaf6311eb49a3b1a2fc14ed2698583a5834e5f729de"},
+    {file = "opencv_python_headless-4.4.0.40-cp37-cp37m-manylinux2014_i686.whl", hash = "sha256:80c88627eb47c4c6ee86734b2638a135c608f516b5888f248a7f12c6fbd3b194"},
+    {file = "opencv_python_headless-4.4.0.40-cp37-cp37m-manylinux2014_x86_64.whl", hash = "sha256:d82af90707ca102ddf420f5d193ce3d5028e7c025f9117afad94182e1e0c6cf6"},
+    {file = "opencv_python_headless-4.4.0.40-cp37-cp37m-win32.whl", hash = "sha256:6382b07d933b3411409bf444159382f459fe2e76f988aeb56d1756b572e6aedb"},
+    {file = "opencv_python_headless-4.4.0.40-cp37-cp37m-win_amd64.whl", hash = "sha256:0826c9470a80fa26ee90c82118b3317716f3b680e393381648c397439de30f42"},
+    {file = "opencv_python_headless-4.4.0.40-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:03325510b727bc02c48d5c8fc84688821b86c9cbae8c65df7128463796286149"},
+    {file = "opencv_python_headless-4.4.0.40-cp38-cp38-manylinux2014_i686.whl", hash = "sha256:bb8e2037ce402563cb62e29628acf59b851dfd59c51f0fe4160a5e28baf47a8c"},
+    {file = "opencv_python_headless-4.4.0.40-cp38-cp38-manylinux2014_x86_64.whl", hash = "sha256:644e043e9281075e38736f13a77f104f2807f084fec3ee14f4d07d86a3b86ea1"},
+    {file = "opencv_python_headless-4.4.0.40-cp38-cp38-win32.whl", hash = "sha256:2384306f1934ec2f6799c9ddbe5dd0df63703b6a0d11d11b67d0c78f5650e7e5"},
+    {file = "opencv_python_headless-4.4.0.40-cp38-cp38-win_amd64.whl", hash = "sha256:923c8c1bdd0027d91f1cf7d4d2e32c8581eff7863574a414d8885048b9df3339"},
 ]
 opt-einsum = [
     {file = "opt_einsum-3.3.0-py3-none-any.whl", hash = "sha256:2455e59e3947d3c275477df7f5205b30635e266fe6dc300e3d9f9646bfcea147"},
@@ -665,6 +751,10 @@ py = [
     {file = "py-1.9.0-py2.py3-none-any.whl", hash = "sha256:366389d1db726cd2fcfc79732e75410e5fe4d31db13692115529d34069a043c2"},
     {file = "py-1.9.0.tar.gz", hash = "sha256:9ca6883ce56b4e8da7e79ac18787889fa5206c79dcc67fb065376cd2fe03f342"},
 ]
+pycodestyle = [
+    {file = "pycodestyle-2.6.0-py2.py3-none-any.whl", hash = "sha256:2295e7b2f6b5bd100585ebcb1f616591b652db8a741695b3d8f5d28bdc934367"},
+    {file = "pycodestyle-2.6.0.tar.gz", hash = "sha256:c58a7d2815e0e8d7972bf1803331fb0152f867bd89adf8a01dfd55085434192e"},
+]
 pycryptodomex = [
     {file = "pycryptodomex-3.9.8-cp27-cp27m-macosx_10_6_intel.whl", hash = "sha256:c0d085c8187a1e4d3402f626c9e438b5861151ab132d8761d9c5ce6491a87761"},
     {file = "pycryptodomex-3.9.8-cp27-cp27m-manylinux1_i686.whl", hash = "sha256:1714675fb4ac29a26ced38ca22eb8ffd923ac851b7a6140563863194d7158422"},
@@ -696,6 +786,10 @@ pycryptodomex = [
     {file = "pycryptodomex-3.9.8-cp39-cp39-manylinux1_i686.whl", hash = "sha256:35b9c9177a9fe7288b19dd41554c9c8ca1063deb426dd5a02e7e2a7416b6bd11"},
     {file = "pycryptodomex-3.9.8-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:e070a1f91202ed34c396be5ea842b886f6fa2b90d2db437dc9fb35a26c80c060"},
     {file = "pycryptodomex-3.9.8.tar.gz", hash = "sha256:48cc2cfc251f04a6142badeb666d1ff49ca6fdfc303fd72579f62b768aaa52b9"},
+]
+pyflakes = [
+    {file = "pyflakes-2.2.0-py2.py3-none-any.whl", hash = "sha256:0d94e0e05a19e57a99444b6ddcf9a6eb2e5c68d3ca1e98e90707af8152c90a92"},
+    {file = "pyflakes-2.2.0.tar.gz", hash = "sha256:35b2d75ee967ea93b55750aa9edbbf72813e06a66ba54438df2cfac9e3c27fc8"},
 ]
 pyparsing = [
     {file = "pyparsing-2.4.7-py2.py3-none-any.whl", hash = "sha256:ef9d7589ef3c200abe66653d3f1ab1033c3c419ae9b9bdb1240a85b024efc88b"},
@@ -777,8 +871,8 @@ werkzeug = [
     {file = "Werkzeug-1.0.1.tar.gz", hash = "sha256:6c80b1e5ad3665290ea39320b91e1be1e0d5f60652b964a3070216de83d2e47c"},
 ]
 wheel = [
-    {file = "wheel-0.34.2-py2.py3-none-any.whl", hash = "sha256:df277cb51e61359aba502208d680f90c0493adec6f0e848af94948778aed386e"},
-    {file = "wheel-0.34.2.tar.gz", hash = "sha256:8788e9155fe14f54164c1b9eb0a319d98ef02c160725587ad60f14ddc57b6f96"},
+    {file = "wheel-0.35.0-py2.py3-none-any.whl", hash = "sha256:64a0d73747636637479b8b8741f9304bee7a568c80e4029eeb9529ef134b471d"},
+    {file = "wheel-0.35.0.tar.gz", hash = "sha256:625e645aae0706ad09690bded523196a065fbcf9afcdb2d713b59e01ef8699c0"},
 ]
 wrapt = [
     {file = "wrapt-1.12.1.tar.gz", hash = "sha256:b62ffa81fb85f4332a4f609cab4ac40709470da05643a082ec1eb88e6d9b97d7"},
