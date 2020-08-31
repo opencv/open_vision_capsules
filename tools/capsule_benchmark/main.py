@@ -8,7 +8,7 @@ from benchmarking import BenchmarkSuite
 def main():
     args = parse_args()
 
-    testing_suite = BenchmarkSuite(args.capsule_dir, args.num_workers)
+    testing_suite = BenchmarkSuite(args.capsule_dir, args.parallelism)
     results = testing_suite.test(args.num_samples)
 
     df = pd.DataFrame.from_records(results,
