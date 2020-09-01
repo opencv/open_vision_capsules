@@ -21,7 +21,7 @@ pip3 install -r requirements.txt
 ### Running the script
 
 Store one or more unpackaged capsules in a directory, in this example called
-capsules`. Then run the script and point it to the directory with the
+`capsules`. Then run the script and point it to the directory with the
 capsule(s).
 ```
 cd tools/capsule_benchmark
