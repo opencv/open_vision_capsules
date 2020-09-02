@@ -40,6 +40,9 @@ def load_capsule(filename: str,
     :return: The loaded capsule object
     """
     filename = Path(filename)
+    if source_path is None:
+        # The source is unavailable. Use a dummy path
+        source_path = Path("/", filename.stem)
 
     if key is not None:
         # Decrypt the capsule into its original form, a zip file
