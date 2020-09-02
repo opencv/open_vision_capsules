@@ -24,8 +24,8 @@ MAJOR_MINOR_SEMVER_PATTERN = re.compile(r"([0-9]+)\.([0-9]+)")
 def load_capsule(filename: str,
                  data: bytes,
                  source_path: Optional[Path] = None,
-                 key=None,
-                 inference_mode=None) -> BaseCapsule:
+                 key: Optional[str] = None,
+                 inference_mode: Optional[bool] = True) -> BaseCapsule:
     """Loads a capsule from the given data.
 
     :param filename: The name of the capsule file, like "detector_person.cap"
@@ -43,7 +43,7 @@ def load_capsule(filename: str,
 
     if key is not None:
         # Decrypt the capsule into its original form, a zip file
-        data = decrypt(data, key)
+        data = decrypt(key, data)
 
     file_like = BytesIO(data)
     loaded_files = {}
@@ -129,7 +129,8 @@ def load_capsule(filename: str,
 
 
 def load_capsule_file(path: Union[str, Path],
-                      key=None, inference_mode=True) -> BaseCapsule:
+                      key=None,
+                      inference_mode=True) -> BaseCapsule:
     """Load a capsule from the filesystem.
 
     :param path: The path to the capsule file
