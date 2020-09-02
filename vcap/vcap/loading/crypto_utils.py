@@ -14,14 +14,16 @@ def encrypt(password, source, dest):
     [dest.write(x) for x in (cipher.nonce, tag, ciphertext)]
 
 
-def decrypt(password, source):
-    """Decrypt the given source into bytes.
+def decrypt(password, data: bytes):
+    """Decrypt the given bytes.
 
     :param password: The password to decrypt with
-    :param source: A file-like object to read from
+    :param data: Data to decrypt
     :return: The resulting bytes
     """
-    nonce, tag, ciphertext = [source.read(x) for x in (16, 16, -1)]
+    nonce = data[:16]
+    tag = data[16:32]
+    ciphertext = data[32:]
 
     cipher = AES.new(password.encode("utf-8"), AES.MODE_EAX, nonce)
     return cipher.decrypt_and_verify(ciphertext, tag)
