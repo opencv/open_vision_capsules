@@ -21,12 +21,12 @@ MINOR_COMPATIBLE_VERSION = 2
 MAJOR_MINOR_SEMVER_PATTERN = re.compile(r"([0-9]+)\.([0-9]+)")
 
 
-def load_capsule(filename: str,
-                 data: bytes,
-                 source_path: Optional[Path] = None,
-                 key: Optional[str] = None,
-                 inference_mode: bool = True) -> BaseCapsule:
-    """Loads a capsule from the given data.
+def load_capsule_from_bytes(filename: str,
+                            data: bytes,
+                            source_path: Optional[Path] = None,
+                            key: Optional[str] = None,
+                            inference_mode: bool = True) -> BaseCapsule:
+    """Loads a capsule from the given bytes.
 
     :param filename: The name of the capsule file, like "detector_person.cap"
     :param data: The data of the capsule
@@ -138,9 +138,9 @@ def load_capsule(filename: str,
     return new_capsule
 
 
-def load_capsule_file(path: Union[str, Path],
-                      key: Optional[str] = None,
-                      inference_mode: bool = True) -> BaseCapsule:
+def load_capsule(path: Union[str, Path],
+                 key: Optional[str] = None,
+                 inference_mode: bool = True) -> BaseCapsule:
     """Load a capsule from the filesystem.
 
     :param path: The path to the capsule file
@@ -153,7 +153,7 @@ def load_capsule_file(path: Union[str, Path],
     path = Path(path)
     source_path = (path.parent / path.stem).absolute()
 
-    return load_capsule(
+    return load_capsule_from_bytes(
         filename=path,
         data=path.read_bytes(),
         source_path=source_path,

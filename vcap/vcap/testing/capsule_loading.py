@@ -3,7 +3,7 @@ from pathlib import Path
 import mock
 
 from vcap import BaseCapsule
-from vcap.loading.capsule_loading import load_capsule, load_capsule_file
+from vcap.loading.capsule_loading import load_capsule_from_bytes, load_capsule
 
 
 def load_capsule_with_one_device(packaged_capsule_path: Path,
@@ -26,10 +26,10 @@ def load_capsule_with_one_device(packaged_capsule_path: Path,
                     mock_init):
         if from_memory:
             data = packaged_capsule_path.read_bytes()
-            capsule: BaseCapsule = load_capsule(
+            capsule: BaseCapsule = load_capsule_from_bytes(
                 filename=packaged_capsule_path.name,
                 data=data)
         else:
-            capsule: BaseCapsule = load_capsule_file(packaged_capsule_path)
+            capsule: BaseCapsule = load_capsule(packaged_capsule_path)
 
     return capsule

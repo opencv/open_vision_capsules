@@ -4,7 +4,7 @@ from .backend import BaseBackend
 from .detection_node import DetectionNode, rect_to_coords, BoundingBox
 from .node_description import NodeDescription, DETECTION_NODE_TYPE
 from .device_mapping import DeviceMapper
-from .loading.capsule_loading import load_capsule
+from .loading.capsule_loading import load_capsule_from_bytes, load_capsule
 from .modifiers import Crop, Clamp, Resize, SizeFilter
 from .options import (
     FloatOption,
