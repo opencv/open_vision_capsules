@@ -3,7 +3,7 @@ from typing import BinaryIO
 from Cryptodome.Cipher import AES
 
 
-def encrypt(password: str, data: bytes, dest: BinaryIO):
+def encrypt(password: str, data: bytes, dest: BinaryIO) -> None:
     """Encrypt the given source to dest.
 
     :param password: The password to encrypt with
@@ -16,7 +16,7 @@ def encrypt(password: str, data: bytes, dest: BinaryIO):
     [dest.write(x) for x in (cipher.nonce, tag, ciphertext)]
 
 
-def decrypt(password: str, data: bytes):
+def decrypt(password: str, data: bytes) -> bytes:
     """Decrypt the given bytes.
 
     :param password: The password to decrypt with
