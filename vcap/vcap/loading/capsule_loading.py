@@ -140,11 +140,14 @@ def load_capsule_from_bytes(data: bytes,
 
 
 def load_capsule(path: Union[str, Path],
+                 source_path: Optional[Path] = None,
                  key: Optional[str] = None,
                  inference_mode: bool = True) -> BaseCapsule:
     """Load a capsule from the filesystem.
 
     :param path: The path to the capsule file
+    :param source_path: The path to to the capsule's source code, if it's
+        available at runtime
     :param key: The AES key to decrypt the capsule with, or None if the capsule
         is not encrypted
     :param inference_mode: If True, the backends for this capsule will be
@@ -152,7 +155,10 @@ def load_capsule(path: Union[str, Path],
         it will still have it's various readable attributes.
     """
     path = Path(path)
-    source_path = (path.parent / path.stem).absolute()
+
+    if source_path is None:
+        # Set the default source path to a directory alongside the capsule file
+        source_path = (path.parent / path.stem).absolute()
 
     return load_capsule_from_bytes(
         data=path.read_bytes(),
