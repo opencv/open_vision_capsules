@@ -1,9 +1,12 @@
 class CapsuleError(Exception):
     """Raised when there was an error loading a capsule."""
 
-    def __init__(self, capsule_name, message):
+    def __init__(self, message, capsule_name=None):
         self.capsule_name = capsule_name
-        super().__init__(f"Capsule {capsule_name}: {message}")
+        if capsule_name is not None:
+            message = f"Capsule {capsule_name}: message"
+
+        super().__init__(message)
 
 
 class IncompatibleCapsuleError(CapsuleError):
