@@ -88,12 +88,6 @@ def test_load_modified_capsule():
     assert not hasattr(module_revision_2, "some_attribute")
 
 
-_BLOCK_SIZE = 1024000
-"""The block size to read files at. Chosen from this answer:
-https://stackoverflow.com/a/3673731
-"""
-
-
 def _get_capsule_module(path: Path):
     module_name = capsule_module_name(path.read_bytes())
     return sys.modules[module_name]
