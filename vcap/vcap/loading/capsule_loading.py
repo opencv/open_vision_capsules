@@ -29,7 +29,7 @@ def load_capsule_from_bytes(data: bytes,
     """Loads a capsule from the given bytes.
 
     :param data: The data of the capsule
-    :param source_path: The path to to the capsule's source code, if it's
+    :param source_path: The path to the capsule's source code, if it's
         available at runtime
     :param key: The AES key to decrypt the capsule with, or None if the capsule
         is not encrypted
@@ -139,7 +139,7 @@ def load_capsule(path: Union[str, Path],
     """Load a capsule from the filesystem.
 
     :param path: The path to the capsule file
-    :param source_path: The path to to the capsule's source code, if it's
+    :param source_path: The path to the capsule's source code, if it's
         available at runtime
     :param key: The AES key to decrypt the capsule with, or None if the capsule
         is not encrypted
@@ -151,7 +151,7 @@ def load_capsule(path: Union[str, Path],
 
     if source_path is None:
         # Set the default source path to a directory alongside the capsule file
-        source_path = (path.parent / path.stem).absolute()
+        source_path = path.absolute().with_suffix("")
 
     return load_capsule_from_bytes(
         data=path.read_bytes(),
