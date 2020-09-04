@@ -6,6 +6,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Callable, List, Optional, Union
 from zipfile import ZipFile
+import hashlib
 
 from vcap import BaseCapsule, BaseBackend, BaseStreamState, NodeDescription
 from vcap.loading.errors import IncompatibleCapsuleError, InvalidCapsuleError
@@ -21,14 +22,12 @@ MINOR_COMPATIBLE_VERSION = 2
 MAJOR_MINOR_SEMVER_PATTERN = re.compile(r"([0-9]+)\.([0-9]+)")
 
 
-def load_capsule_from_bytes(filename: str,
-                            data: bytes,
+def load_capsule_from_bytes(data: bytes,
                             source_path: Optional[Path] = None,
                             key: Optional[str] = None,
                             inference_mode: bool = True) -> BaseCapsule:
     """Loads a capsule from the given bytes.
 
-    :param filename: The name of the capsule file, like "detector_person.cap"
     :param data: The data of the capsule
     :param source_path: The path to to the capsule's source code, if it's
         available at runtime
@@ -39,7 +38,7 @@ def load_capsule_from_bytes(filename: str,
         it will still have it's various readable attributes.
     :return: The loaded capsule object
     """
-    capsule_name = Path(filename).stem
+    capsule_name = capsule_module_name(data)
     if source_path is None:
         # The source is unavailable. Use a dummy path
         source_path = Path("/", capsule_name)
@@ -108,10 +107,12 @@ def load_capsule_from_bytes(filename: str,
 
         # With the capsule's code loaded, initialize the object
         capsule_module = ModuleType(capsule_name)
-        try:
-            # Allow the capsule.py to import other files in the capsule
-            sys.meta_path.insert(1, ZipFinder(capsule_file, source_path))
 
+        # Allow the capsule.py to import other files in the capsule
+        sys.meta_path.insert(1, ZipFinder(capsule_file, source_path,
+                                          capsule_name))
+
+        try:
             # Run the capsule
             compiled = compile(code, source_path / CAPSULE_FILE_NAME, "exec")
             exec(compiled, capsule_module.__dict__)
@@ -154,7 +155,6 @@ def load_capsule(path: Union[str, Path],
     source_path = (path.parent / path.stem).absolute()
 
     return load_capsule_from_bytes(
-        filename=path,
         data=path.read_bytes(),
         source_path=source_path,
         key=key,
@@ -283,3 +283,9 @@ def _validate_capsule(capsule: BaseCapsule):
     except Exception as e:
         message = f"This capsule is invalid for unknown reasons. Error: {e}"
         raise InvalidCapsuleError(capsule.name, message)
+
+
+def capsule_module_name(data: bytes) -> str:
+    """Creates a unique module name for the given capsule bytes"""
+    hash_ = hashlib.sha256(data).hexdigest()
+    return f"capsule_{hash_}"

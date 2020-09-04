@@ -13,7 +13,9 @@ class ZipFinder(MetaPathFinder):
     imported.
     """
 
-    def __init__(self, zip_file: ZipFile, capsule_dir_path: Path):
+    def __init__(self, zip_file: ZipFile,
+                 capsule_dir_path: Path,
+                 root_package_name: str):
         """
         :param zip_file: The ZipFile loaded in memory
         :param capsule_dir_path:
@@ -27,10 +29,13 @@ class ZipFinder(MetaPathFinder):
             The reason for this is so that debugging can work within capsules.
             When a capsule is executed, it is "compiled" to this path, so that
             debug information still works (along with breakpoints!)
+        :param root_package_name: The name of the root package that this zip
+            file provides
         """
         self._zip_file = zip_file
         self._capsule_dir_path = capsule_dir_path
         self._capsule_dir_name = self._capsule_dir_path.name
+        self._root_package_name = root_package_name
 
     def find_spec(self, fullname, _path=None, _target=None):
         if not self._in_capsule(fullname):
@@ -38,7 +43,7 @@ class ZipFinder(MetaPathFinder):
             # not our job to import it
             return None
 
-        if fullname == self._capsule_dir_name:
+        if fullname == self._root_package_name:
             # If the capsule root directory is being loaded, return a
             # modulespec
             return ModuleSpec(
@@ -72,7 +77,7 @@ class ZipFinder(MetaPathFinder):
 
     def _in_capsule(self, fullname):
         parts = fullname.split(".")
-        if parts[0] != self._capsule_dir_name:
+        if parts[0] != self._root_package_name:
             return False
         return True
 

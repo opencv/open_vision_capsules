@@ -7,7 +7,8 @@ from vcap.loading.capsule_loading import load_capsule_from_bytes, load_capsule
 
 
 def load_capsule_with_one_device(packaged_capsule_path: Path,
-                                 from_memory=False) -> BaseCapsule:
+                                 from_memory: bool = False,
+                                 inference_mode: bool = True) -> BaseCapsule:
     """
     Load the capsule, but patch out the DeviceMapper so that it never returns
     multiple devices.
@@ -27,9 +28,10 @@ def load_capsule_with_one_device(packaged_capsule_path: Path,
         if from_memory:
             data = packaged_capsule_path.read_bytes()
             capsule: BaseCapsule = load_capsule_from_bytes(
-                filename=packaged_capsule_path.name,
-                data=data)
+                data=data,
+                inference_mode=inference_mode)
         else:
-            capsule: BaseCapsule = load_capsule(packaged_capsule_path)
+            capsule: BaseCapsule = load_capsule(packaged_capsule_path,
+                                                inference_mode=inference_mode)
 
     return capsule
