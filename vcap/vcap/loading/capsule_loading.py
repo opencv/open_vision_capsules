@@ -1,5 +1,4 @@
 import configparser
-import logging
 import re
 import sys
 from io import BytesIO
@@ -7,11 +6,12 @@ from pathlib import Path
 from types import ModuleType
 from typing import Callable, List, Optional, Union
 from zipfile import ZipFile
+import hashlib
 
 from vcap import BaseCapsule, BaseBackend, BaseStreamState, NodeDescription
 from vcap.loading.errors import IncompatibleCapsuleError, InvalidCapsuleError
 
-from .crypto_utils import decrypt_file
+from .crypto_utils import decrypt
 from .import_hacks import ZipFinder
 from .packaging import CAPSULE_FILE_NAME, META_FILE_NAME
 
@@ -22,36 +22,41 @@ MINOR_COMPATIBLE_VERSION = 2
 MAJOR_MINOR_SEMVER_PATTERN = re.compile(r"([0-9]+)\.([0-9]+)")
 
 
-def load_capsule(path: Union[str, Path],
-                 key=None, inference_mode=True) -> BaseCapsule:
-    """Load a capsule from the filesystem.
+def load_capsule_from_bytes(data: bytes,
+                            source_path: Optional[Path] = None,
+                            key: Optional[str] = None,
+                            inference_mode: bool = True) -> BaseCapsule:
+    """Loads a capsule from the given bytes.
 
-    :param path: The path to the capsule file
+    :param data: The data of the capsule
+    :param source_path: The path to the capsule's source code, if it's
+        available at runtime
     :param key: The AES key to decrypt the capsule with, or None if the capsule
         is not encrypted
     :param inference_mode: If True, the backends for this capsule will be
         started. If False, the capsule will never be able to run inference, but
         it will still have it's various readable attributes.
+    :return: The loaded capsule object
     """
-    path = Path(path)
-    loaded_files = {}
+    module_name = capsule_module_name(data)
+    if source_path is None:
+        # The source is unavailable. Use a dummy path
+        source_path = Path("/", module_name)
 
-    if key is None:
-        # Capsule is unencrypted and already a zip file
-        capsule_data = path.read_bytes()
-    else:
+    if key is not None:
         # Decrypt the capsule into its original form, a zip file
-        capsule_data = decrypt_file(path, key)
-    file_like = BytesIO(capsule_data)
+        data = decrypt(key, data)
+
+    file_like = BytesIO(data)
+    loaded_files = {}
 
     code = None
     with ZipFile(file_like, "r") as capsule_file:
         if CAPSULE_FILE_NAME not in capsule_file.namelist():
-            raise RuntimeError(f"Capsule {path} has no {CAPSULE_FILE_NAME}")
+            raise InvalidCapsuleError(f"Missing file {CAPSULE_FILE_NAME}")
 
         if META_FILE_NAME not in capsule_file.namelist():
-            raise IncompatibleCapsuleError(
-                f"Capsule {path} has no {META_FILE_NAME}")
+            raise InvalidCapsuleError(f"Missing file {META_FILE_NAME}")
 
         for name in capsule_file.namelist():
             if name == CAPSULE_FILE_NAME:
@@ -82,32 +87,32 @@ def load_capsule(path: Union[str, Path],
                 f"{major}.{minor}.")
         if major != MAJOR_COMPATIBLE_VERSION:
             raise IncompatibleCapsuleError(
-                f"Capsule {path} is not compatible with this software. The "
+                f"The capsule is not compatible with this software. The "
                 f"capsule's OpenVisionCapsules required major version is "
                 f"{major} but this software uses OpenVisionCapsules "
                 f"{MAJOR_COMPATIBLE_VERSION}.{MINOR_COMPATIBLE_VERSION}.")
         if minor > MINOR_COMPATIBLE_VERSION:
             raise IncompatibleCapsuleError(
-                f"Capsule {path} requires a version of OpenVisionCapsules "
+                f"The capsule requires a version of OpenVisionCapsules "
                 f"that is too new for this software. The capsule requires at "
                 f"least version {major}.{minor} but this software uses "
                 f"OpenVisionCapsules "
                 f"{MAJOR_COMPATIBLE_VERSION}.{MINOR_COMPATIBLE_VERSION}.")
 
         # With the capsule's code loaded, initialize the object
-        capsule_module = ModuleType(path.stem)
-        try:
-            # Allow the capsule.py to import other files in the capsule
-            capsule_dir_path = (path.parent / path.stem).absolute()
-            sys.meta_path.insert(1, ZipFinder(capsule_file, capsule_dir_path))
+        capsule_module = ModuleType(module_name)
 
+        # Allow the capsule.py to import other files in the capsule
+        sys.meta_path.insert(
+            1, ZipFinder(capsule_file, source_path, module_name))
+
+        try:
             # Run the capsule
-            compiled = compile(code, capsule_dir_path / "capsule.py", "exec")
+            compiled = compile(code, source_path / CAPSULE_FILE_NAME, "exec")
             exec(compiled, capsule_module.__dict__)
         except Exception as e:
             raise InvalidCapsuleError(
-                "Could not execute the code in the capsule!\n"
-                f"File: {path}\n"
+                f"Could not execute the code in the capsule!\n"
                 f"Error: {e}")
         finally:
             # Remove custom import code
@@ -121,11 +126,39 @@ def load_capsule(path: Union[str, Path],
     try:
         _validate_capsule(new_capsule)
     except InvalidCapsuleError as e:
-        logging.warning(f"Failed to load capsule {path}")
         new_capsule.close()
         raise e
 
     return new_capsule
+
+
+def load_capsule(path: Union[str, Path],
+                 source_path: Optional[Path] = None,
+                 key: Optional[str] = None,
+                 inference_mode: bool = True) -> BaseCapsule:
+    """Load a capsule from the filesystem.
+
+    :param path: The path to the capsule file
+    :param source_path: The path to the capsule's source code, if it's
+        available at runtime
+    :param key: The AES key to decrypt the capsule with, or None if the capsule
+        is not encrypted
+    :param inference_mode: If True, the backends for this capsule will be
+        started. If False, the capsule will never be able to run inference, but
+        it will still have it's various readable attributes.
+    """
+    path = Path(path)
+
+    if source_path is None:
+        # Set the default source path to a directory alongside the capsule file
+        source_path = path.absolute().with_suffix("")
+
+    return load_capsule_from_bytes(
+        data=path.read_bytes(),
+        source_path=source_path,
+        key=key,
+        inference_mode=inference_mode,
+    )
 
 
 def _validate_capsule(capsule: BaseCapsule):
@@ -163,7 +196,8 @@ def _validate_capsule(capsule: BaseCapsule):
         if re.fullmatch(r"\w+", capsule.name, flags=re.ASCII) is None:
             raise InvalidCapsuleError(
                 "Capsule names must only contain alphanumeric characters and "
-                "underscores")
+                "underscores",
+                capsule.name)
 
         # Validate the capsule class attributes
         capsule_assertions = [
@@ -177,7 +211,8 @@ def _validate_capsule(capsule: BaseCapsule):
         if not all(capsule_assertions):
             raise InvalidCapsuleError(
                 f"The capsule has an invalid internal configuration!\n" +
-                f"Capsule Assertions: {capsule_assertions}")
+                f"Capsule Assertions: {capsule_assertions}",
+                capsule.name)
 
         # Make sure that certain things are NOT attributes (we don't want
         # accidental leftover code from previous capsule versions)
@@ -189,7 +224,8 @@ def _validate_capsule(capsule: BaseCapsule):
                 raise InvalidCapsuleError(
                     f"The capsule has leftover attributes from a previous "
                     f"OpenVisionCapsules API version. Attribute name: "
-                    f"{unwanted_attr}")
+                    f"{unwanted_attr}",
+                    capsule.name)
             except AttributeError:
                 pass
 
@@ -201,7 +237,8 @@ def _validate_capsule(capsule: BaseCapsule):
         if not all(loader_assertions):
             raise InvalidCapsuleError(
                 f"The capsule's backend_loader has an invalid configuration!\n"
-                f"Loader Assertions: {loader_assertions}")
+                f"Loader Assertions: {loader_assertions}",
+                capsule.name)
 
         # Validate the backend class attributes
         if capsule.backends is not None:
@@ -214,7 +251,8 @@ def _validate_capsule(capsule: BaseCapsule):
             if not all(backend_assertions):
                 raise InvalidCapsuleError(
                     f"The capsule's backend has an invalid configuration!\n"
-                    f"Backend Assertions: {backend_assertions}")
+                    f"Backend Assertions: {backend_assertions}",
+                    capsule.name)
 
         # Validate the stream state
         stream_state = capsule.stream_state
@@ -224,21 +262,29 @@ def _validate_capsule(capsule: BaseCapsule):
         if not all(stream_state_assertions):
             raise InvalidCapsuleError(
                 "The capsule's stream_state has an invalid configuration!\n"
-                f"Stream State Assertions: {stream_state_assertions}")
+                f"Stream State Assertions: {stream_state_assertions}",
+                capsule.name)
 
         # Validate that if the capsule is an encoder, it has a threshold option
         if capsule.capability.encoded:
             if "recognition_threshold" not in capsule.options.keys():
                 raise InvalidCapsuleError(
                     "This capsule can encode, but doesn't have a option "
-                    "called \"recognition_threshold\"!")
+                    "called \"recognition_threshold\"!",
+                    capsule.name)
     except InvalidCapsuleError:
         # Don't catch this exception type in the "except Exception" below
         raise
     except AttributeError as e:
         message = f"The capsule did not describe the necessary attributes. " \
                   f"Error: {e}"
-        raise InvalidCapsuleError(message)
+        raise InvalidCapsuleError(message, capsule.name)
     except Exception as e:
         message = f"This capsule is invalid for unknown reasons. Error: {e}"
-        raise InvalidCapsuleError(message)
+        raise InvalidCapsuleError(message, capsule.name)
+
+
+def capsule_module_name(data: bytes) -> str:
+    """Creates a unique module name for the given capsule bytes"""
+    hash_ = hashlib.sha256(data).hexdigest()
+    return f"capsule_{hash_}"

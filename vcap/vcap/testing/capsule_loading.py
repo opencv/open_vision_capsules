@@ -3,10 +3,12 @@ from pathlib import Path
 import mock
 
 from vcap import BaseCapsule
-from vcap.loading.capsule_loading import load_capsule
+from vcap.loading.capsule_loading import load_capsule_from_bytes, load_capsule
 
 
-def load_capsule_with_one_device(packaged_capsule_path: Path) -> BaseCapsule:
+def load_capsule_with_one_device(packaged_capsule_path: Path,
+                                 from_memory: bool = False,
+                                 inference_mode: bool = True) -> BaseCapsule:
     """
     Load the capsule, but patch out the DeviceMapper so that it never returns
     multiple devices.
@@ -23,6 +25,13 @@ def load_capsule_with_one_device(packaged_capsule_path: Path) -> BaseCapsule:
 
     with mock.patch('vcap.device_mapping.DeviceMapper.__init__',
                     mock_init):
-        capsule: BaseCapsule = load_capsule(path=packaged_capsule_path)
+        if from_memory:
+            data = packaged_capsule_path.read_bytes()
+            capsule: BaseCapsule = load_capsule_from_bytes(
+                data=data,
+                inference_mode=inference_mode)
+        else:
+            capsule: BaseCapsule = load_capsule(packaged_capsule_path,
+                                                inference_mode=inference_mode)
 
     return capsule

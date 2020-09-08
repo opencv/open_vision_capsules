@@ -49,4 +49,4 @@ def package_capsule(unpackaged_dir: Path, output_file: Path, key=None):
         if key is None:
             output.write(saved_zip_bytes.read())
         else:
-            encrypt(key, saved_zip_bytes, output)
+            encrypt(key, saved_zip_bytes.read(), output)
