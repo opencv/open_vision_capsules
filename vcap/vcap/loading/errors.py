@@ -1,4 +1,4 @@
-class CapsuleError(Exception):
+class CapsuleLoadError(Exception):
     """Raised when there was an error loading a capsule."""
 
     def __init__(self, message, capsule_name=None):
@@ -9,13 +9,13 @@ class CapsuleError(Exception):
         super().__init__(message)
 
 
-class IncompatibleCapsuleError(CapsuleError):
+class IncompatibleCapsuleError(CapsuleLoadError):
     """This is thrown when a capsule is of an incompatible API version for this
     version of the library.
     """
 
 
-class InvalidCapsuleError(CapsuleError):
+class InvalidCapsuleError(CapsuleLoadError):
     """This is thrown when a capsule has the correct API compatibility version,
     but it still doesn't have the correct information on it.
     """
