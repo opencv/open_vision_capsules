@@ -20,6 +20,7 @@ from .loading.packaging import (
     package_capsule
 )
 from .loading.errors import (
+    CapsuleLoadError,
     InvalidCapsuleError,
-    IncompatibleCapsuleError
+    IncompatibleCapsuleError,
 )
