@@ -1,4 +1,5 @@
 import configparser
+import hashlib
 import re
 import sys
 from io import BytesIO
@@ -6,7 +7,6 @@ from pathlib import Path
 from types import ModuleType
 from typing import Callable, List, Optional, Union
 from zipfile import ZipFile
-import hashlib
 
 from vcap import BaseCapsule, BaseBackend, BaseStreamState, NodeDescription
 from vcap.loading.errors import IncompatibleCapsuleError, InvalidCapsuleError
@@ -200,19 +200,21 @@ def _validate_capsule(capsule: BaseCapsule):
                 capsule.name)
 
         # Validate the capsule class attributes
-        capsule_assertions = [
-            isinstance(capsule.name, str),
-            callable(capsule.backend_loader),
-            isinstance(capsule.version, int),
-            isinstance(capsule.input_type, NodeDescription),
-            isinstance(capsule.output_type, NodeDescription),
-            isinstance(capsule.options, dict)]
-
-        if not all(capsule_assertions):
-            raise InvalidCapsuleError(
-                f"The capsule has an invalid internal configuration!\n" +
-                f"Capsule Assertions: {capsule_assertions}",
-                capsule.name)
+        _validate_capsule_field(capsule, "name", capsule.name, str)
+        _validate_capsule_field(capsule,
+                                "backend_loader",
+                                capsule.backend_loader,
+                                callable)
+        _validate_capsule_field(capsule, "version", capsule.version, int)
+        _validate_capsule_field(capsule,
+                                "input_type",
+                                capsule.input_type,
+                                NodeDescription)
+        _validate_capsule_field(capsule,
+                                "output_type",
+                                capsule.input_type,
+                                NodeDescription)
+        _validate_capsule_field(capsule, "options", capsule.options, dict)
 
         # Make sure that certain things are NOT attributes (we don't want
         # accidental leftover code from previous capsule versions)
@@ -230,40 +232,43 @@ def _validate_capsule(capsule: BaseCapsule):
                 pass
 
         # Validate the capsule's backend_loader takes the right args
-        loader = capsule.backend_loader
-        loader_assertions = [
-            callable(loader),
-            check_arg_names(func=loader, correct=["capsule_files", "device"])]
-        if not all(loader_assertions):
+        correct_args = ["capsule_files", "device"]
+        is_correct = check_arg_names(func=capsule.backend_loader,
+                                     correct=correct_args)
+        if not is_correct:
             raise InvalidCapsuleError(
-                f"The capsule's backend_loader has an invalid configuration!\n"
-                f"Loader Assertions: {loader_assertions}",
+                f"The capsule's backend_loader has invalid arguments!\n"
+                f"The arguments must be {correct_args}",
                 capsule.name)
 
         # Validate the backend class attributes
         if capsule.backends is not None:
             backend = capsule.backends[0]
-            backend_assertions = [
-                callable(backend.batch_predict),
-                callable(backend.process_frame),
-                callable(backend.close),
-                isinstance(capsule.backends[0], BaseBackend)]
-            if not all(backend_assertions):
+            _validate_backend_field(capsule,
+                                    "batch_predict",
+                                    backend.batch_predict,
+                                    callable)
+            _validate_backend_field(capsule,
+                                    "process_frame",
+                                    backend.process_frame,
+                                    callable)
+            _validate_backend_field(capsule,
+                                    "close",
+                                    backend.close,
+                                    callable)
+            if not isinstance(capsule.backends[0], BaseBackend):
                 raise InvalidCapsuleError(
-                    f"The capsule's backend has an invalid configuration!\n"
-                    f"Backend Assertions: {backend_assertions}",
+                    f"The capsule's backend field must be a class that "
+                    f"subclasses {BaseBackend.__name__}",
                     capsule.name)
 
         # Validate the stream state
         stream_state = capsule.stream_state
-        stream_state_assertions = [
-            (stream_state is BaseStreamState or
-             BaseStreamState in stream_state.__bases__)]
-        if not all(stream_state_assertions):
+        if not (stream_state is BaseStreamState or
+                BaseStreamState in stream_state.__bases__):
             raise InvalidCapsuleError(
-                "The capsule's stream_state has an invalid configuration!\n"
-                f"Stream State Assertions: {stream_state_assertions}",
-                capsule.name)
+                f"The capsule's stream_state field must be a class that "
+                f"subclasses {BaseStreamState.__name__}")
 
         # Validate that if the capsule is an encoder, it has a threshold option
         if capsule.capability.encoded:
@@ -288,3 +293,26 @@ def capsule_module_name(data: bytes) -> str:
     """Creates a unique module name for the given capsule bytes"""
     hash_ = hashlib.sha256(data).hexdigest()
     return f"capsule_{hash_}"
+
+
+def _validate_capsule_field(capsule, name, value, type_) -> None:
+    if not _check_type(value, type_):
+        raise InvalidCapsuleError(
+            f"The capsule has an invalid internal configuration!\n"
+            f"Capsule field {name} must be of type {type_}, got {type(value)}",
+            capsule.name)
+
+
+def _validate_backend_field(capsule, name, value, type_) -> None:
+    if not _check_type(value, type_):
+        raise InvalidCapsuleError(
+            f"The capsule's backend has an invalid configuration!\n"
+            f"Backend field {name} must be of type {type_}, got {type(value)}",
+            capsule.name)
+
+
+def _check_type(value, type_) -> bool:
+    if type_ == callable:
+        return callable(value)
+    else:
+        return isinstance(value, type_)
