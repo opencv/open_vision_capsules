@@ -312,7 +312,8 @@ def _validate_backend_field(capsule, name, value, type_) -> None:
 
 
 def _check_type(value, type_) -> bool:
-    if type_ == callable:
+    if type_ is callable:
+        # callable isn't actually a type, so we need to give it a special case
         return callable(value)
     else:
         return isinstance(value, type_)
