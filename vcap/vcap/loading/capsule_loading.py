@@ -302,11 +302,12 @@ def _validate_capsule_field(capsule: BaseCapsule,
                             name: str,
                             value: Any,
                             type_: _TYPE_CALLABLE) -> None:
-    if type_ is callable and not callable(value):
-        raise InvalidCapsuleError(
-            f"The capsule has an invalid internal configuration!\n"
-            f"Capsule field {name} must be callable, got {type(value)}",
-            capsule.name)
+    if type_ is callable:
+        if not callable(value):
+            raise InvalidCapsuleError(
+                f"The capsule has an invalid internal configuration!\n"
+                f"Capsule field {name} must be callable, got {type(value)}",
+                capsule.name)
     elif not isinstance(value, type_):
         raise InvalidCapsuleError(
             f"The capsule has an invalid internal configuration!\n"
@@ -318,11 +319,12 @@ def _validate_backend_field(capsule: BaseCapsule,
                             name: str,
                             value: Any,
                             type_: _TYPE_CALLABLE) -> None:
-    if type_ is callable and not callable(value):
-        raise InvalidCapsuleError(
-            f"The capsule's backend has an invalid configuration!\n"
-            f"Backend field {name} must be callable, got {type(value)}",
-            capsule.name)
+    if type_ is callable:
+        if not callable(value):
+            raise InvalidCapsuleError(
+                f"The capsule's backend has an invalid configuration!\n"
+                f"Backend field {name} must be callable, got {type(value)}",
+                capsule.name)
     elif not isinstance(value, type_):
         raise InvalidCapsuleError(
             f"The capsule's backend has an invalid configuration!\n"
