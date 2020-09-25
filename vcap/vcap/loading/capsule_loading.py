@@ -5,7 +5,7 @@ import sys
 from io import BytesIO
 from pathlib import Path
 from types import ModuleType
-from typing import Callable, List, Optional, Union, Any
+from typing import Any, Callable, List, Optional, Union
 from zipfile import ZipFile
 
 from vcap import BaseCapsule, BaseBackend, BaseStreamState, NodeDescription
