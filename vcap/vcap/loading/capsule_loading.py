@@ -5,7 +5,7 @@ import sys
 from io import BytesIO
 from pathlib import Path
 from types import ModuleType
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional, Union, Any
 from zipfile import ZipFile
 
 from vcap import BaseCapsule, BaseBackend, BaseStreamState, NodeDescription
@@ -295,7 +295,13 @@ def capsule_module_name(data: bytes) -> str:
     return f"capsule_{hash_}"
 
 
-def _validate_capsule_field(capsule, name, value, type_) -> None:
+_TYPE_CALLABLE = Union[type, callable]
+
+
+def _validate_capsule_field(capsule: BaseCapsule,
+                            name: str,
+                            value: Any,
+                            type_: _TYPE_CALLABLE) -> None:
     if not _check_type(value, type_):
         raise InvalidCapsuleError(
             f"The capsule has an invalid internal configuration!\n"
@@ -303,7 +309,10 @@ def _validate_capsule_field(capsule, name, value, type_) -> None:
             capsule.name)
 
 
-def _validate_backend_field(capsule, name, value, type_) -> None:
+def _validate_backend_field(capsule: BaseCapsule,
+                            name: str,
+                            value: Any,
+                            type_: _TYPE_CALLABLE) -> None:
     if not _check_type(value, type_):
         raise InvalidCapsuleError(
             f"The capsule's backend has an invalid configuration!\n"
@@ -311,7 +320,7 @@ def _validate_backend_field(capsule, name, value, type_) -> None:
             capsule.name)
 
 
-def _check_type(value, type_) -> bool:
+def _check_type(value: Any, type_: _TYPE_CALLABLE) -> bool:
     if type_ is callable:
         # callable isn't actually a type, so we need to give it a special case
         return callable(value)
