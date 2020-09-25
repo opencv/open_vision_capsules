@@ -19,7 +19,7 @@ setup(
         "scipy==1.4.1",
         "scikit-learn==0.22.2",
         "numpy>=1.16,<2",
-        "tensorflow-gpu==1.15.2",
+        "tensorflow-gpu==1.15.4",
     ],
     extras_require={
         "tests": test_packages,
