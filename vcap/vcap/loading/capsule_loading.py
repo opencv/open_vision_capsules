@@ -266,8 +266,8 @@ def _validate_capsule(capsule: BaseCapsule):
         stream_state = capsule.stream_state
         if not issubclass(stream_state, BaseStreamState):
             raise InvalidCapsuleError(
-                f"The capsule's stream_state field must be a class that "
-                f"subclasses {BaseStreamState.__name__}, got {stream_state}")
+                f"The capsule's stream_state field must be a subclass of "
+                f"{BaseStreamState.__name__}, got {stream_state}")
 
         # Validate that if the capsule is an encoder, it has a threshold option
         if capsule.capability.encoded:
