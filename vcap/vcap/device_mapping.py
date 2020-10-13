@@ -29,7 +29,7 @@ def get_all_devices() -> List[str]:
             # TODO: Use tf.config.list_physical_devices in TF 2.1
             # TODO: Remove the config when using TF_FORCE_GPU_ALLOW_GROWTH\
             #  environment variable
-            _process_gpu_options = tf.GPUOptions(allow_growth=True)
+            _process_gpu_options = tf.GPUOptions()
             config = tf.ConfigProto(gpu_options=_process_gpu_options)
 
             with tf.Session(config=config):

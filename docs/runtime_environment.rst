@@ -56,3 +56,11 @@ Note that non-relative imports to these files will `not` work:
 
    import backend
    from utils import img_utils, ml_utils
+
+Limiting GPU memory Growth
+-----------------------------------------
+
+By default Vcap maps all available memory of all visible CUDA configured GPUs,
+To prevent this set Environment varialbe ``TF_FORCE_GPU_ALLOW_GROWTH==True``.
+
+For proper reference, visit TENSORFLOW: https://www.tensorflow.org/guide/gpu#limiting_gpu_memory_growth
