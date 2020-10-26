@@ -2,11 +2,11 @@
 
 Ovens are classes that know how to do some kind of generic work in batches.
 """
-import logging
 import queue
+from concurrent.futures import Future
 from queue import Queue
 from threading import Thread
-from typing import Any, Callable, List, NamedTuple, Optional
+from typing import Any, Callable, Iterable, List, NamedTuple, Optional
 
 
 class _OvenRequest(NamedTuple):
@@ -16,7 +16,7 @@ class _OvenRequest(NamedTuple):
     output_queue: The queue for the oven to put the results in
     img_bgr: An OpenCV BGR image to run detection on
     """
-    output_queue: Queue
+    future: Future
     input_data: Any
 
 
@@ -25,7 +25,8 @@ class Oven:
     running that work in a batched predict function, then returning that
     work to the respective output queues."""
 
-    def __init__(self, batch_fn: Callable[[List[Any]], List[Any]],
+    def __init__(self,
+                 batch_fn: Callable[[List[Any]], Iterable[Any]],
                  max_batch_size=40,
                  num_workers: int = 1):
         """Initialize a new oven.
@@ -57,33 +58,37 @@ class Oven:
     def total_imgs_in_pipeline(self) -> int:
         return self._request_queue.qsize() + self._num_imgs_being_processed
 
-    def submit(self, input_data: Any, output_queue: Queue = None) -> Queue:
+    def submit(self, input_data: Any, future: Future = None) -> Future:
         """Creates an OvenRequest for you and returns the output queue"""
-        output_queue = output_queue if output_queue else Queue()
+        future = future or Future()
+
+        # TODO: mark the *.get method as deprecated somehow
+        future.get = future.result
+
         self._request_queue.put(_OvenRequest(
-            output_queue=output_queue,
+            future=future,
             input_data=input_data))
-        return output_queue
+        return future
 
     def _on_requests_ready(self, batch: List[_OvenRequest]) -> None:
-        """Push images through the given prediction backend
+        """Push inputs through the given prediction backend
 
         :param batch: A list of requests to work on
         """
-        # Extract the images from the requests
+        # Extract the futures from the requests
         inputs: List[Any] = [req.input_data for req in batch]
-        output_queues: List[Queue] = [req.output_queue for req in batch]
+        futures: Iterable[Future] = (req.future for req in batch)
 
         # Route the results to each request
-        predictions: List[Any] = self.batch_fn(inputs)
-
-        response_count = 0
-        for response_count, output in enumerate(predictions, start=1):
-            output_queues[response_count - 1].put(output)
-
-        if response_count != len(inputs):
-            logging.error(f"CRITICAL ERROR: Backend returned {response_count} "
-                          f"responses. Expected {len(inputs)}")
+        try:
+            for prediction in self.batch_fn(inputs):
+                # Popping the futures ensures that if an error occurs, only
+                # the futures that haven't had a result set will have
+                # set_exception called
+                futures.pop(0).set_result(prediction)
+        except BaseException as exc:
+            for future in futures:
+                future.set_exception(exc)
 
     def _worker(self):
         self._running = True
