@@ -77,7 +77,8 @@ class Oven:
         """
         # Extract the futures from the requests
         inputs: List[Any] = [req.input_data for req in batch]
-        futures: Iterable[Future] = (req.future for req in batch)
+        futures: List[Future] = [req.future for req in batch]
+
 
         # Route the results to each request
         try:
