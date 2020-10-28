@@ -11,9 +11,9 @@ from typing import Any, Callable, Iterable, List, NamedTuple, Optional
 
 class _OvenRequest(NamedTuple):
     """A request that is sent to an oven to do some work on an image, and
-    push predictions into the output_queue
+    put the results into Future objects
 
-    output_queue: The queue for the oven to put the results in
+    future: The Future object for the oven to put the results in
     img_bgr: An OpenCV BGR image to run detection on
     """
     future: Future
@@ -78,7 +78,6 @@ class Oven:
         # Extract the futures from the requests
         inputs: List[Any] = [req.input_data for req in batch]
         futures: List[Future] = [req.future for req in batch]
-
 
         # Route the results to each request
         try:
