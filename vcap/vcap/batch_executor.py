@@ -1,7 +1,3 @@
-"""Defines ovens.
-
-Ovens are classes that know how to do some kind of generic work in batches.
-"""
 import queue
 from concurrent.futures import Future
 from queue import Queue
@@ -9,30 +5,32 @@ from threading import Thread
 from typing import Any, Callable, Iterable, List, NamedTuple, Optional
 
 
-class _OvenRequest(NamedTuple):
-    """A request that is sent to an oven to do some work on an image, and
-    put the results into Future objects
-
-    future: The Future object for the oven to put the results in
-    img_bgr: An OpenCV BGR image to run detection on
+class _Request(NamedTuple):
+    """Used by BatchExecutor to keep track of requests and their respective
+    future objects.
     """
+
     future: Future
+    """The Future object for the BatchExecutor to return the output"""
+
     input_data: Any
+    """A unit of input data expected by the batch_fn."""
 
 
-class Oven:
-    """This class simplifies receiving work from a multitude of sources and
+class BatchExecutor:
+    """Feeds jobs into batch_fn in batches, receive results through Futures.
+
+    This class simplifies receiving work from a multitude of sources and
     running that work in a batched predict function, then returning that
-    work to the respective output queues."""
+    work to the respective Futures.
+    """
 
     def __init__(self,
                  batch_fn: Callable[[List[Any]], Iterable[Any]],
                  max_batch_size=40,
                  num_workers: int = 1):
-        """Initialize a new oven.
-         that the oven will wait between running a batch regardless of batch
-         size.
-
+        """Initialize a new BatchExecutor
+        
         :param batch_fn: A function that takes in a list of inputs and iterates
         the outputs in the same order as the inputs.
         :param max_batch_size: The maximum length of list to feed to batch_fn
@@ -40,10 +38,10 @@ class Oven:
         """
         self.batch_fn = batch_fn
         self.max_batch_size = max_batch_size
-        self._request_queue = Queue()
+        self._request_queue: Queue[_Request] = Queue()
         self.workers = [Thread(target=self._worker,
                                daemon=True,
-                               name="OvenThread")
+                               name="BatchExecutorThread")
                         for _ in range(num_workers)]
 
         # The number of images currently in the work queue or being processed
@@ -59,18 +57,18 @@ class Oven:
         return self._request_queue.qsize() + self._num_imgs_being_processed
 
     def submit(self, input_data: Any, future: Future = None) -> Future:
-        """Creates an OvenRequest for you and returns the output queue"""
+        """Submits a job and returns a Future that will be fulfilled later."""
         future = future or Future()
 
         # TODO: mark the *.get method as deprecated somehow
         future.get = future.result
 
-        self._request_queue.put(_OvenRequest(
+        self._request_queue.put(_Request(
             future=future,
             input_data=input_data))
         return future
 
-    def _on_requests_ready(self, batch: List[_OvenRequest]) -> None:
+    def _on_requests_ready(self, batch: List[_Request]) -> None:
         """Push inputs through the given prediction backend
 
         :param batch: A list of requests to work on
@@ -111,12 +109,12 @@ class Oven:
 
         self._running = False
 
-    def _get_next_batch(self) -> Optional[List[_OvenRequest]]:
+    def _get_next_batch(self) -> Optional[List[_Request]]:
         """A helper function to help make the main thread loop more readable
         :returns: A non-empty list of collected items, or None if the worker is
                   no longer running (i.e. self._continue == False)
         """
-        batch: List[_OvenRequest] = []
+        batch: List[_Request] = []
         while len(batch) < self.max_batch_size:
             # Check if there's a new request
             try:
@@ -140,7 +138,7 @@ class Oven:
         return batch
 
     def close(self) -> None:
-        """Stop the oven gracefully."""
+        """Stop the BatchExecutor gracefully."""
         self._running = False
         for worker in self.workers:
             worker.join()

@@ -1,23 +1,23 @@
-from concurrent.futures import Future
-from typing import List, Generator, Any, Tuple
 import random
+from concurrent.futures import Future
+from typing import Any, Generator, List, Tuple
 
 import pytest
 
-from vcap.ovens import Oven, _OvenRequest
+from vcap.batch_executor import BatchExecutor, _Request
 
 
 @pytest.fixture()
-def oven():
-    """To use this fixture, replace oven.batch_fn with your own
+def batch_executor():
+    """To use this fixture, replace batch_executor.batch_fn with your own
     batch function."""
 
     def batch_fn(inputs):
         raise NotImplemented
 
-    oven = Oven(batch_fn=batch_fn)
-    yield oven
-    oven.close()
+    batch_executor = BatchExecutor(batch_fn=batch_fn)
+    yield batch_executor
+    batch_executor.close()
 
 
 def batch_fn_base(inputs: List[int], raises: bool) \
@@ -58,23 +58,24 @@ def batch_fn_returns_list_raises(inputs: List[int]) -> List[Any]:
         (batch_fn_returns_list_raises, False)
     ]
 )
-def test_exceptions_during_batch_fn(oven, batch_fn, expect_partial_results):
-    """Test that ovens catch exceptions that occur in the batch_fn and
-     propagate them through the requests Future objects.
+def test_exceptions_during_batch_fn(
+        batch_executor, batch_fn, expect_partial_results):
+    """Test that BatchExecutor catches exceptions that occur in the batch_fn
+    and propagates them through the requests Future objects.
 
      If an exception occurs after processing some of the batch, the expectation
      is that the unprocessed inputs of the batch will get an exception
      set (expect_partial_results=True). If the exception happens before
      receiving any results, all future objects should have exceptions set.
      """
-    oven.batch_fn = batch_fn
+    batch_executor.batch_fn = batch_fn
     request_batch = [
-        _OvenRequest(
+        _Request(
             future=Future(),
             input_data=i)
         for i in range(10)
     ]
-    oven._on_requests_ready(request_batch)
+    batch_executor._on_requests_ready(request_batch)
     for i, request in enumerate(request_batch):
         print("Running req", i, request)
         if expect_partial_results and i < 5:
@@ -94,20 +95,20 @@ def test_exceptions_during_batch_fn(oven, batch_fn, expect_partial_results):
         (batch_fn_returns_list,)
     ]
 )
-def test_relevant_input_outputs_match(oven, batch_fn):
+def test_relevant_input_outputs_match(batch_executor, batch_fn):
     """Test the output for any given input is routed to the correct
     Future object. """
-    oven.batch_fn = batch_fn
+    batch_executor.batch_fn = batch_fn
 
     # Submit input values in a random order
     request_inputs = list(range(10000))
     random.seed("vcap? More like vgood")
     random.shuffle(request_inputs)
 
-    # Submit results to the oven and mark the input for any particular future
+    # Submit inputs to the batch executor and keep track of their futures
     inputs_and_futures: List[Tuple[int, Future]] = []
     for input_data in request_inputs:
-        future = oven.submit(input_data)
+        future = batch_executor.submit(input_data)
         inputs_and_futures.append((input_data, future))
 
     # Verify that all outputs are the expected ones for their respective input
@@ -117,4 +118,4 @@ def test_relevant_input_outputs_match(oven, batch_fn):
             "The result for this future doesn't match the input that " \
             "was supposed to have been routed to it!"
 
-    assert oven.total_imgs_in_pipeline == 0
+    assert batch_executor.total_imgs_in_pipeline == 0
