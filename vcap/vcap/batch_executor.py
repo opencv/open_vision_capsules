@@ -18,9 +18,9 @@ class _Request(NamedTuple):
 
 
 class BatchExecutor:
-    """Feeds jobs into batch_fn in batches, receive results through Futures.
+    """Feeds jobs into batch_fn in batches, returns results through Futures.
 
-    This class simplifies receiving work from a multitude of sources and
+    This class simplifies centralizing work from a multitude of sources and
     running that work in a batched predict function, then returning that
     work to the respective Futures.
     """
@@ -30,7 +30,7 @@ class BatchExecutor:
                  max_batch_size=40,
                  num_workers: int = 1):
         """Initialize a new BatchExecutor
-        
+
         :param batch_fn: A function that takes in a list of inputs and iterates
         the outputs in the same order as the inputs.
         :param max_batch_size: The maximum length of list to feed to batch_fn
