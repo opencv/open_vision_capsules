@@ -3,6 +3,10 @@ import os
 
 from setuptools import setup, find_namespace_packages
 
+about = {}
+with open("vcap/version.py") as fp:
+    exec(fp.read(), about)
+
 test_packages = ["pytest", "mock"]
 
 PRE_RELEASE_SUFFIX = os.environ.get("PRE_RELEASE_SUFFIX", "")
@@ -10,9 +14,9 @@ PRE_RELEASE_SUFFIX = os.environ.get("PRE_RELEASE_SUFFIX", "")
 setup(
     name='vcap',
     description="A library for creating OpenVisionCapsules in Python",
-    author="Dilili Labs",
+    author="Aotu",
     packages=find_namespace_packages(include=["vcap*"]),
-    version="0.2.6" + PRE_RELEASE_SUFFIX,
+    version=about["__version__"] + PRE_RELEASE_SUFFIX,
 
     install_requires=[
         "pycryptodomex==3.9.7",

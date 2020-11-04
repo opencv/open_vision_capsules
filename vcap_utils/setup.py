@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 import os
+import importlib
 
 from setuptools import setup, find_namespace_packages
+
+about = {}
+with open("vcap_utils/version.py") as fp:
+    exec(fp.read(), about)
 
 test_packages = ["pytest", "mock"]
 
@@ -10,9 +15,9 @@ PRE_RELEASE_SUFFIX = os.environ.get("PRE_RELEASE_SUFFIX", "")
 setup(
     name='vcap-utils',
     description="Utilities for creating OpenVisionCapsules easily in Python",
-    author="Dilili Labs",
+    author="Aotu",
     packages=find_namespace_packages(include=["vcap_utils*"]),
-    version="0.2.6" + PRE_RELEASE_SUFFIX,
+    version=about["__version__"] + PRE_RELEASE_SUFFIX,
 
     install_requires=[
         "vcap",
