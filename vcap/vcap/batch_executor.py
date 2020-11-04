@@ -4,6 +4,8 @@ from queue import Queue
 from threading import Thread
 from typing import Any, Callable, Iterable, List, NamedTuple, Optional
 
+from vcap import deprecated
+
 
 class _Request(NamedTuple):
     """Used by BatchExecutor to keep track of requests and their respective
@@ -60,8 +62,12 @@ class BatchExecutor:
         """Submits a job and returns a Future that will be fulfilled later."""
         future = future or Future()
 
-        # TODO: mark the *.get method as deprecated somehow
+        # Add backwards compatibility for 0.2
         future.get = future.result
+        future.get = deprecated(
+            message="Use future.result() in place of future.get()",
+            remove_in="0.3.0"
+        )(future.get)
 
         self._request_queue.put(_Request(
             future=future,
