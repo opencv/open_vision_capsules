@@ -23,11 +23,18 @@ def batch_executor():
 def batch_fn_base(inputs: List[int], raises: bool) \
         -> Generator[Any, None, None]:
     """Process results and yield them as they are processed
+
+    This function is to be used as a base for other test cases for batch_fn
+    variants.
+
     :param inputs: A list of inputs
-    :param raises: If True, raises an error on the 5th input
+    :param raises: If True, raises an error on the 5th input. If False,
+    no exception will be raised.
     """
     for i in inputs:
         if i == 5 and raises:
+            # This occurs on the 5th input if raises=True.
+            # This is used to test BatchExecutor's handling of exceptions
             raise RuntimeError("Oh no, a batch_fn error has occurred!")
         yield i * 100
 
