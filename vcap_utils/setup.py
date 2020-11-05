@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 import os
-import importlib
+from pathlib import Path
 
 from setuptools import setup, find_namespace_packages
 
+# Get package version/metadata
 about = {}
-with open("vcap_utils/version.py") as fp:
-    exec(fp.read(), about)
+exec(Path("vcap_utils/version.py").read_text(), about)
 
 test_packages = ["pytest", "mock"]
 
