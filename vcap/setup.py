@@ -15,7 +15,7 @@ PRE_RELEASE_SUFFIX = os.environ.get("PRE_RELEASE_SUFFIX", "")
 setup(
     name='vcap',
     description="A library for creating OpenVisionCapsules in Python",
-    author="Aotu",
+    author="Aotu.ai",
     packages=find_namespace_packages(include=["vcap*"]),
     version=about["__version__"] + PRE_RELEASE_SUFFIX,
 
