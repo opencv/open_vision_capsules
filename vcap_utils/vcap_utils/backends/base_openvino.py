@@ -120,7 +120,7 @@ class BaseOpenVINOBackend(BaseBackend):
     def send_to_batch(self, input_data: OV_INPUT_TYPE) -> Future:
         """Efficiently send the input to be inferenced by the network
         :param input_data: Input to the network
-        :returns: A queue that will yield 1 result, the output from the network
+        :returns: A future that will be filled with the output from the network
         """
         future = Future()
 
