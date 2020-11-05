@@ -77,7 +77,6 @@ def test_exceptions_during_batch_fn(
     ]
     batch_executor._on_requests_ready(request_batch)
     for i, request in enumerate(request_batch):
-        print("Running req", i, request)
         if expect_partial_results and i < 5:
             result = request.future.result(timeout=5)
             assert result == request.input_data * 100, \
