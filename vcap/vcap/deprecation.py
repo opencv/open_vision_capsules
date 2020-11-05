@@ -24,7 +24,9 @@ def deprecated(message: str = "",
         warning_msg += (f"and is scheduled to be removed in {remove_in}. "
                         if remove_in is not None else ". ")
         warning_msg += str(message)
-        warnings.simplefilter("always", DeprecationWarning)
+
+        # Only show the DeprecationWarning on the first call
+        warnings.simplefilter("once", DeprecationWarning)
 
         @functools.wraps(function)
         def inner(*args, **kwargs):

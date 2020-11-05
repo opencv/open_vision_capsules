@@ -6,7 +6,7 @@ from setuptools import setup, find_namespace_packages
 
 # Get package version/metadata
 about = {}
-exec(Path("vcap_utils/version.py").read_text(), about)
+exec(Path("vcap/version.py").read_text(), about)
 
 test_packages = ["pytest", "mock"]
 
