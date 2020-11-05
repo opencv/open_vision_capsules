@@ -63,11 +63,11 @@ def test_exceptions_during_batch_fn(
     """Test that BatchExecutor catches exceptions that occur in the batch_fn
     and propagates them through the requests Future objects.
 
-     If an exception occurs after processing some of the batch, the expectation
-     is that the unprocessed inputs of the batch will get an exception
-     set (expect_partial_results=True). If the exception happens before
-     receiving any results, all future objects should have exceptions set.
-     """
+    If an exception occurs after processing some of the batch, the expectation
+    is that the unprocessed inputs of the batch will get an exception
+    set (expect_partial_results=True). If the exception happens before
+    receiving any results, all future objects should have exceptions set.
+    """
     batch_executor.batch_fn = batch_fn
     request_batch = [
         _Request(
