@@ -20,7 +20,7 @@ class Backend(TFImageClassifier):
                 .pad_percent(top=10, bottom=10, left=10, right=10)
                 .apply(frame))
 
-        prediction = self.send_to_batch(crop).get()
+        prediction = self.send_to_batch(crop).result()
 
         detection_node.attributes[config.category] = prediction.name
         detection_node.extra_data[config.extra_data] = prediction.confidence

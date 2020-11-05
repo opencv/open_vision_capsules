@@ -24,7 +24,7 @@ class Backend(TFObjectDetector):
                           max_height=max_frame_side_length)
             frame = clamp.apply()
 
-        predictions = self.send_to_batch(frame).get()
+        predictions = self.send_to_batch(frame).result()
 
         results = []
 

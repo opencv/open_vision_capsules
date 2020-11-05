@@ -1,11 +1,11 @@
 import logging
 from threading import Event, RLock
 from typing import Dict, List, Tuple
-from queue import Queue
+from concurrent.futures import Future
 
 import numpy as np
 
-from vcap import Resize, BaseBackend, DetectionNode
+from vcap import Resize, BaseBackend, DetectionNode, deprecated
 
 _SUPPORTED_METRICS = "SUPPORTED_METRICS"
 _RANGE_FOR_ASYNC_INFER_REQUESTS = "RANGE_FOR_ASYNC_INFER_REQUESTS"
@@ -112,17 +112,17 @@ class BaseOpenVINOBackend(BaseBackend):
 
         This won't affect much unless a custom DeviceMapper filter is used that
         allows multiple Backends to be loaded, eg, a backend for CPU and a
-        backend for HDDL. In those cases, this workload measurement will be used
-        heavily to decide which backend is busier.
+        backend for HDDL. In those cases, this workload measurement will be
+        used heavily to decide which backend is busier.
         """
         return self._num_ongoing_requests / self._total_requests
 
-    def send_to_batch(self, input_data: OV_INPUT_TYPE) -> Queue:
+    def send_to_batch(self, input_data: OV_INPUT_TYPE) -> Future:
         """Efficiently send the input to be inferenced by the network
         :param input_data: Input to the network
         :returns: A queue that will yield 1 result, the output from the network
         """
-        out_queue = Queue(maxsize=1)
+        future = Future()
 
         with self._get_free_request_lock:
             # Try to get at least one request
@@ -141,7 +141,7 @@ class BaseOpenVINOBackend(BaseBackend):
             request_free = self._request_free_events[request_id]
 
             def on_result(*args):
-                out_queue.put(request.outputs)
+                future.set_result(request.outputs)
                 request_free.set()
                 with self._num_ongoing_requests_lock:
                     self._num_ongoing_requests -= 1
@@ -155,7 +155,15 @@ class BaseOpenVINOBackend(BaseBackend):
             with self._num_ongoing_requests_lock:
                 self._num_ongoing_requests += 1
             request.async_infer(input_data)
-        return out_queue
+
+        # Add backwards compatibility for 0.2
+        future.get = future.result
+        future.get = deprecated(
+            message="Use future.result() in place of future.get()",
+            remove_in="0.3.0"
+        )(future.get)
+
+        return future
 
     def prepare_inputs(self, frame: np.ndarray, frame_input_name: str = None) \
             -> Tuple[OV_INPUT_TYPE, Resize]:

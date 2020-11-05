@@ -25,7 +25,7 @@ class BaseBackend(abc.ABC):
         backend this method is being called on.
 
         :param input_data: The input object to send to batch_predict
-        :return: A queue where results will be stored
+        :return: A future where results will be stored
         """
         return self._batch_executor.submit(input_data)
 
