@@ -92,7 +92,7 @@ class BaseCapsule(ABC):
                       state: BaseStreamState) \
             -> DETECTION_NODE_TYPE:
         """
-        Find the Backend that has a batch executor with the least amount of
+        Find the Backend that has a BatchExecutor with the least amount of
         images in the pipeline, and run with that Backend. In multi-GPU
         scenarios, this is the logic that allows even usage across all GPUs.
         """

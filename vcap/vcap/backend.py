@@ -21,11 +21,11 @@ class BaseBackend(abc.ABC):
     def send_to_batch(self, input_data: Any) -> Future:
         """Sends the given object to the batch_predict method for processing.
         This call does not block. Instead, the result will be provided on the
-        returned future. The batch_predict method must be overridden on the
+        returned Future. The batch_predict method must be overridden on the
         backend this method is being called on.
 
         :param input_data: The input object to send to batch_predict
-        :return: A future where results will be stored
+        :return: A Future where results will be stored
         """
         return self._batch_executor.submit(input_data)
 

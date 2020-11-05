@@ -111,7 +111,7 @@ def test_relevant_input_outputs_match(batch_executor, batch_fn):
     random.seed("vcap? More like vgood")
     random.shuffle(request_inputs)
 
-    # Submit inputs to the batch executor and keep track of their futures
+    # Submit inputs to the BatchExecutor and keep track of their futures
     inputs_and_futures: List[Tuple[int, Future]] = []
     for input_data in request_inputs:
         future = batch_executor.submit(input_data)
