@@ -1,3 +1,5 @@
+from .version import __version__
+from .deprecation import deprecated
 from .capsule import BaseCapsule
 from .stream_state import BaseStreamState
 from .backend import BaseBackend

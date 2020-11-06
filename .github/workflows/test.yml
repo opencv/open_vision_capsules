@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [ master ]
   push:
-    branches: [ master ]
+
 
 jobs:
   test:
@@ -33,7 +33,7 @@ jobs:
         path: ${{ steps.pip-cache.outputs.dir }}
         key: ${{ runner.os }}-${{ hashFiles('**/setup.py') }}-pip-cache
         restore-keys: |
-          ${{ runner.os }}-pip-cache 
+          ${{ runner.os }}-pip-cache
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip

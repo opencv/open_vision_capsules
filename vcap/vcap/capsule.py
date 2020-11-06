@@ -10,7 +10,7 @@ from .backend import BaseBackend
 from .caching import cache
 from .device_mapping import DeviceMapper, get_all_devices
 from .node_description import DETECTION_NODE_TYPE, NodeDescription
-from .options import Option, OPTION_TYPE
+from .options import OPTION_TYPE, Option
 from .stream_state import BaseStreamState
 
 
@@ -91,9 +91,11 @@ class BaseCapsule(ABC):
                       options: Dict[str, OPTION_TYPE],
                       state: BaseStreamState) \
             -> DETECTION_NODE_TYPE:
-        """Find the Backend that has an oven with the least amount of images
-        in the pipeline, and run with that Backend. In multi-GPU scenarios,
-        this is the logic that allows even usage across all GPUs."""
+        """
+        Find the Backend that has a BatchExecutor with the least amount of
+        images in the pipeline, and run with that Backend. In multi-GPU
+        scenarios, this is the logic that allows even usage across all GPUs.
+        """
         with self.backends_lock:
             # Pick the backend with the lowest current 'workload' and
             # send the image there for inferencing.
@@ -119,9 +121,7 @@ class BaseCapsule(ABC):
                 del self._stream_states[stream_id]
 
     def close(self) -> None:
-        """Stops the capsule, de-initializing all backends."""
-        # This method MUST close the oven first, then de-initialize the
-        # backend so as to clear up memory.
+        """De-initializes all backends."""
         if self.backends is not None:
             with self.backends_lock:
                 for backend in self.backends:

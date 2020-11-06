@@ -34,19 +34,20 @@ amount of round-trips the video frames take between devices.
 
 If you wish to use batching in your capsule, you may call the ``send_to_batch``
 method in ``process_frame`` instead of doing analysis in that method directly.
-The ``send_to_batch`` method collects one or more input objects into a list and
-routinely calls your backend's ``batch_predict`` method with this list. As a
-result, users of ``send_to_batch`` must override the ``batch_predict`` method
-in addition to the other required methods.
+The ``send_to_batch`` method sends the input to a ``BatchExecutor`` which collects
+inference requests for this capsule from different streams. Then, the
+``BatchExecutor`` routinely calls your backend's ``batch_predict`` method with a
+list of the collected inputs. As a result, users of ``send_to_batch`` must
+override the ``batch_predict`` method in addition to the other required methods.
 
 The ``send_to_batch`` method is asynchronous. Instead of immediately returning
-analysis results, it returns a ``queue.Queue`` where the result will be provided.
+analysis results, it returns a ``concurrent.futures.Future`` where the result will be provided.
 Simple batching capsules may call ``send_to_batch``, then immediately call
-``get`` to block for the result.
+``result`` to block for the result.
 
 .. code-block:: python
 
-   result = self.send_to_batch(frame).get()
+   result = self.send_to_batch(frame).result()
 
 An argument of any type may be provided to ``send_to_batch``, as the argument
 will be passed in a list to ``batch_predict`` without modification. In many

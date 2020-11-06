@@ -229,9 +229,9 @@ def perform_capsule_tests(unpackaged_capsule_dir: Union[Path, str],
 
         # Since the __del__ method was wrapped, mock will not actually call the
         # underlying method when the object gets garbage collected- thus the
-        # capsule will never get 'close' called on it, thus the oven threads
-        # will not close. To fix that, we call 'close' now, and check that
-        # __del__ WOULD have been called.
+        # capsule will never get 'close' called on it, thus the BatchExecutor
+        # threads will not close. To fix that, we call 'close' now, and check
+        # that __del__ WOULD have been called.
         capsule.close()
 
         # Check that capsule.close() successfully killed any worker threads

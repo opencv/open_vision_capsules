@@ -1,11 +1,11 @@
 import abc
-from queue import Queue
-from typing import Any, Dict, List, Union
+from concurrent.futures import Future
+from typing import Any, Dict, List
 
 import numpy as np
 
+from vcap.batch_executor import BatchExecutor
 from vcap.node_description import DETECTION_NODE_TYPE
-from vcap.ovens import Oven
 from vcap.options import OPTION_TYPE
 from vcap.stream_state import BaseStreamState
 
@@ -16,18 +16,18 @@ class BaseBackend(abc.ABC):
     """
 
     def __init__(self):
-        self._oven = Oven(self.batch_predict)
+        self._batch_executor = BatchExecutor(self.batch_predict)
 
-    def send_to_batch(self, input_data: Any) -> Queue:
+    def send_to_batch(self, input_data: Any) -> Future:
         """Sends the given object to the batch_predict method for processing.
         This call does not block. Instead, the result will be provided on the
-        returned queue. The batch_predict method must be overridden on the
+        returned Future. The batch_predict method must be overridden on the
         backend this method is being called on.
 
         :param input_data: The input object to send to batch_predict
-        :return: A queue where results will be stored
+        :return: A Future where results will be stored
         """
-        return self._oven.submit(input_data)
+        return self._batch_executor.submit(input_data)
 
     @property
     def workload(self) -> float:
@@ -36,7 +36,7 @@ class BaseBackend(abc.ABC):
         is intended to give the scheduler the ability to pick the least busy
         backend.
         """
-        return self._oven.total_imgs_in_pipeline
+        return self._batch_executor.total_imgs_in_pipeline
 
     @abc.abstractmethod
     def process_frame(self,
@@ -90,4 +90,4 @@ class BaseBackend(abc.ABC):
         The backend will stop receiving frames before this method is
         called, and will not receive frames again.
         """
-        self._oven.close()
+        self._batch_executor.close()
