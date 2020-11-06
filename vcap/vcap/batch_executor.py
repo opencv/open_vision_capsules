@@ -91,6 +91,9 @@ class BatchExecutor:
                 # set_exception called
                 futures.pop(0).set_result(prediction)
         except BaseException as exc:
+            # Catch exceptions and pass them to the futures, similar to the
+            # ThreadPoolExecutor implementation:
+            # https://github.com/python/cpython/blob/91e93794/Lib/concurrent/futures/thread.py#L51
             for future in futures:
                 future.set_exception(exc)
 
