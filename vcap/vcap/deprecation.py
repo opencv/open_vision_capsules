@@ -30,7 +30,8 @@ def deprecated(message: str = "",
 
         @functools.wraps(function)
         def inner(*args, **kwargs):
-            if parse_version(current_version) >= parse_version(remove_in):
+            if remove_in is not None and \
+                    parse_version(current_version) >= parse_version(remove_in):
                 raise DeprecationWarning(warning_msg)
             else:
                 warnings.warn(warning_msg, category=DeprecationWarning)
