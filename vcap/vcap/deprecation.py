@@ -26,7 +26,7 @@ def deprecated(message: str = "",
         warning_msg += str(message)
 
         # Only show the DeprecationWarning on the first call
-        warnings.simplefilter("once", DeprecationWarning)
+        warnings.simplefilter("once", DeprecationWarning, append=True)
 
         @functools.wraps(function)
         def inner(*args, **kwargs):
