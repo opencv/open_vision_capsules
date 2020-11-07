@@ -7,6 +7,19 @@ from typing import Any, Callable, Iterable, List, NamedTuple, Optional
 from vcap import deprecated
 
 
+class BackwardsCompatibleFuture(Future):
+    """Backwards-compatibility helper for users who used to use the queue.get()
+    API.
+    TODO: Remove in 0.3.0
+    """
+
+    @deprecated(
+        message="Use future.result() in place of future.get()",
+        remove_in="0.3.0")
+    def get(self, timeout=None):
+        return self.result(timeout=timeout)
+
+
 class _Request(NamedTuple):
     """Used by BatchExecutor to keep track of requests and their respective
     future objects.
@@ -60,14 +73,7 @@ class BatchExecutor:
 
     def submit(self, input_data: Any, future: Future = None) -> Future:
         """Submits a job and returns a Future that will be fulfilled later."""
-        future = future or Future()
-
-        # Add backwards compatibility for 0.2
-        future.get = future.result
-        future.get = deprecated(
-            message="Use future.result() in place of future.get()",
-            remove_in="0.3.0"
-        )(future.get)
+        future = future or BackwardsCompatibleFuture()
 
         self._request_queue.put(_Request(
             future=future,
