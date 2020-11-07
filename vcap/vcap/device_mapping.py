@@ -19,20 +19,13 @@ def get_all_devices() -> List[str]:
     # Initialize the device list if necessary
     with _devices_lock:
         if _devices is None:
-            # We set these config options on the session because otherwise list
-            # local_devices allocates all of the available GPU memory to the
-            # computer
-            #
-            # Note that this config has the side effect of being set for all
-            # future sessions#
+            # Use the TF_FORCE_GPU_ALLOW_GROWTH=true environment variable to
+            # force allow tensorflow to take up GPU memory dynamically, instead
+            # of allocating 100% of memory at first model-load.
             #
             # TODO: Use tf.config.list_physical_devices in TF 2.1
-            # TODO: Remove the config when using TF_FORCE_GPU_ALLOW_GROWTH\
-            #  environment variable
-            _process_gpu_options = tf.GPUOptions()
-            config = tf.ConfigProto(gpu_options=_process_gpu_options)
 
-            with tf.Session(config=config):
+            with tf.Session():
                 all_devices = device_lib.list_local_devices()
 
             # Get the device names and remove duplicates, just in case...
