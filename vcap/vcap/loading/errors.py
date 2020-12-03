@@ -4,7 +4,7 @@ class CapsuleLoadError(Exception):
     def __init__(self, message, capsule_name=None):
         self.capsule_name = capsule_name
         if capsule_name is not None:
-            message = f"Capsule {capsule_name}: message"
+            message = f"Capsule {capsule_name}: {message}"
 
         super().__init__(message)
 
