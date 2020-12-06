@@ -62,13 +62,6 @@ class BatchExecutor:
         """Submits a job and returns a Future that will be fulfilled later."""
         future = future or Future()
 
-        # Add backwards compatibility for 0.2
-        future.get = future.result
-        future.get = deprecated(
-            message="Use future.result() in place of future.get()",
-            remove_in="0.3.0"
-        )(future.get)
-
         self._request_queue.put(_Request(
             future=future,
             input_data=input_data))
