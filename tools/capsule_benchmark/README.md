@@ -25,7 +25,7 @@ Store one or more unpackaged capsules in a directory, in this example called
 capsule(s).
 ```
 cd tools/capsule_benchmark
-python3 --capsule-dir /path/to/capsules/
+python3 main.py --capsule-dir /path/to/capsules/
 ```
 
 The parallelism (x axis) can be changed by varying the `--parallelism`.
