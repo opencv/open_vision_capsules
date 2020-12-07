@@ -156,13 +156,6 @@ class BaseOpenVINOBackend(BaseBackend):
                 self._num_ongoing_requests += 1
             request.async_infer(input_data)
 
-        # Add backwards compatibility for 0.2
-        future.get = future.result
-        future.get = deprecated(
-            message="Use future.result() in place of future.get()",
-            remove_in="0.3.0"
-        )(future.get)
-
         return future
 
     def prepare_inputs(self, frame: np.ndarray, frame_input_name: str = None) \
