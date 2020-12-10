@@ -5,7 +5,7 @@ from concurrent.futures import Future
 
 import numpy as np
 
-from vcap import Resize, BaseBackend, DetectionNode, deprecated
+from vcap import Resize, BaseBackend, DetectionNode
 
 _SUPPORTED_METRICS = "SUPPORTED_METRICS"
 _RANGE_FOR_ASYNC_INFER_REQUESTS = "RANGE_FOR_ASYNC_INFER_REQUESTS"
@@ -81,7 +81,7 @@ class BaseOpenVINOBackend(BaseBackend):
             return
 
         # Pull out a couple useful constants
-        self.input_blob_names: List[str] = list(self.net.inputs.keys())
+        self.input_blob_names: List[str] = list(self.net.input_info.keys())
         self.output_blob_names: List[str] = list(self.net.outputs.keys())
 
         # For running threaded requests to the network
@@ -175,15 +175,14 @@ class BaseOpenVINOBackend(BaseBackend):
             inputs
         :returns: ({input_name: resized_frame}, Resize)
         """
-
-        if not frame_input_name and len(self.net.inputs) > 1:
+        if not frame_input_name and len(self.net.input_info) > 1:
             raise ValueError("More than one input was expected for model, but "
                              "default prepare_inputs implementation was used.")
 
         input_blob_name = frame_input_name or self.input_blob_names[0]
-        input_blob = self.net.inputs[input_blob_name]
+        input_data = self.net.input_info[input_blob_name].input_data
 
-        _, _, h, w = input_blob.shape
+        _, _, h, w = input_data.shape
         resize = Resize(frame).resize(w, h, Resize.ResizeType.EXACT)
 
         # Change data layout from HWC to CHW
@@ -196,7 +195,8 @@ class BaseOpenVINOBackend(BaseBackend):
             resize: Resize,
             label_map: Dict[int, str],
             min_confidence: float = 0.0,
-            boxes_output_name: str = None) -> List[DetectionNode]:
+            boxes_output_name: str = None,
+            frame_input_name: str = None) -> List[DetectionNode]:
         """A helper method to take results from a detection-type network.
         :param results: The inference results from the network
         :param resize: A Resize object that was used to resize the image to
@@ -206,13 +206,16 @@ class BaseOpenVINOBackend(BaseBackend):
         less than this number.
         :param boxes_output_name: The name of output that carries the bounding
         box information to be parsed. Default=self.output_blob_names[0]
+        :param frame_input_name: The name of the input that took the frame in.
+
         :returns: A list of DetectionNodes, in this case representing bounding
         boxes.
         """
         output_blob_name = boxes_output_name or self.output_blob_names[0]
         inference_results = results[output_blob_name]
 
-        _, _, h, w = self.net.inputs[self.input_blob_names[0]].shape
+        input_name = frame_input_name or self.input_blob_names[0]
+        _, _, h, w = self.net.input_info[input_name].input_data.shape
 
         nodes: List[DetectionNode] = []
         for result in inference_results[0][0]:
