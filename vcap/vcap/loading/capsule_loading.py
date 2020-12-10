@@ -16,7 +16,7 @@ from .import_hacks import ZipFinder
 from .packaging import CAPSULE_FILE_NAME, META_FILE_NAME
 
 MAJOR_COMPATIBLE_VERSION = 0
-MINOR_COMPATIBLE_VERSION = 2
+MINOR_COMPATIBLE_VERSION = 3
 """The capsule version that this version of the library supports."""
 
 MAJOR_MINOR_SEMVER_PATTERN = re.compile(r"([0-9]+)\.([0-9]+)")
