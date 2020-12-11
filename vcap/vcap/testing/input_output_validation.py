@@ -161,7 +161,9 @@ def _run_inference_on_images(images: List[np.ndarray], capsule: BaseCapsule):
                 # Assert the nodes "extra_data" attribute can be JSON encoded
                 # without errors. Typically this can happen if there's a numpy
                 # array carelessly left in the extra_data
+
                 json.loads(json.dumps(output_node.extra_data))
+
 
                 # If this capsule can encode things, verify that the backend
                 # correctly implemented the "distance" function
