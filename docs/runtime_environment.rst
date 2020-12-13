@@ -61,7 +61,7 @@ Limiting GPU memory Growth
 -----------------------------------------
 
 By default, OpenVisionCapsules maps all available memory of all visible CUDA configured GPUs.
-To prevent this, use following Environment flag while using Tensorflow.
+To prevent this, use the following Environment flag while using Tensorflow.
 
 .. code-block:: python
 
