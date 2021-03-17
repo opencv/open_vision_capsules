@@ -20,11 +20,11 @@ setup(
     version=about["__version__"] + PRE_RELEASE_SUFFIX,
 
     install_requires=[
-        "pycryptodomex==3.9.7",
-        "scipy==1.4.1",
-        "scikit-learn==0.22.2",
+        "pycryptodomex==3.10.1",
+        "scipy==1.5.4",
+        "scikit-learn==0.24.1",
         "numpy>=1.16,<2",
-        "tensorflow-gpu==1.15.4",
+        "tensorflow>=1.15.4,<2",
     ],
     extras_require={
         "tests": test_packages,
