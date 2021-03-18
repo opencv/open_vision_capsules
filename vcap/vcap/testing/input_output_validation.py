@@ -45,6 +45,7 @@ def make_detection_node(frame_shape,
                   node_description.attributes.items()}
     extra_data = {data_key: 0.5129319283
                   for data_key in node_description.extra_data}
+    detection_names = node_description.detections
 
     # Create random coordinates for this detection
     x1 = random.randint(0, width - 3)
@@ -53,7 +54,7 @@ def make_detection_node(frame_shape,
     y2 = y1 + random.randint(0, height - y1 + 1) + 2
 
     return DetectionNode(
-        name=random.choice(node_description.detections),
+        name=random.choice(detection_names) if len(detection_names) else "N/A",
         coords=[[x1, y1], [x2, y1], [x2, y2], [x1, y2]],
         attributes=attributes,
         encoding=np.zeros((128,)) if node_description.encoded else None,
@@ -163,7 +164,6 @@ def _run_inference_on_images(images: List[np.ndarray], capsule: BaseCapsule):
                 # array carelessly left in the extra_data
 
                 json.loads(json.dumps(output_node.extra_data))
-
 
                 # If this capsule can encode things, verify that the backend
                 # correctly implemented the "distance" function
