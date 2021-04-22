@@ -1,7 +1,10 @@
 import numpy as np
+import cupy as cp
+
 import pycuda.driver as cuda
 import tensorrt as trt
 import pycuda.autoinit
+import time
 
 from typing import Dict, List, Tuple, Optional, Any
 
@@ -78,14 +81,54 @@ class BaseTensorRTBackend(BaseBackend):
                 yield result
 
     def _process_batch(self, input_data: List[np.array]):
+        pre_batch_time = time.time()
         batch_size = len(input_data)
-        batched_image = np.concatenate(input_data, axis=0)
+        # input_data_cuppy = [cp.array(data) for data in input_data]
+        """Ideas
+        1) Try raveling before concatenate
+        2) Instead of concatenating, try generating an array of the size and shape of what the concatenated image WOULD 
+            be, then copy the raveled images into their respective places in the array
+        """
+        ravel_time = time.time()
+        raveled_input = [data.ravel() for data in input_data]
+        print("batch_size:", batch_size, "ravel time:", int(round((time.time() - ravel_time) * 1000)),
+              int(round((time.time() - ravel_time) * 1000)) / batch_size)
+
+        concatenate_time = time.time()
+        batched_image = np.concatenate(raveled_input, axis=0)
+        #image_size = len(raveled_input[0])
+        #batched_image = np.zeros((1, batch_size * image_size))
+        #for index, image in enumerate(batched_image):
+        #    batched_image[index * image_size:(index + 1) * image_size] = image
+        print("batch_size:", batch_size, "concatenate time:", int(round((time.time() - concatenate_time) * 1000)),
+              int(round((time.time() - concatenate_time) * 1000)) / batch_size)
+
+        # image_size = self.engine_height * self.engine_width
+        # batched_image = np.zeros((1, batch_size * image_size))
+        # for index, image in enumerate(batched_image):
+        #    for row_index, row in enumerate(image):
+        #        batched_image[index * image_size + row_index * self.engine_width:(index+1) * image_size + row_index * self.engine_width] = row
+
+        # for data in input_data:
+        #    batch_image_array.append(data.ravel())
+
+        # batched_image = np.concatenate(input_data, axis=0)
+        # print(type(batched_image))
         prepared_buffer = self.buffers[batch_size]
         inputs = prepared_buffer.inputs
         outputs = prepared_buffer.outputs
         bindings = prepared_buffer.bindings
         stream = prepared_buffer.stream
-        np.copyto(inputs[0].host, batched_image.ravel())
+        copy_time = time.time()
+        # raveled_image = batched_image.ravel()
+
+        # np.copyto(inputs[0].host, raveled_image)
+        np.copyto(inputs[0].host, batched_image)
+        print("batch_size:", batch_size, "copy time:", int(round((time.time() - copy_time) * 1000)),
+              int(round((time.time() - copy_time) * 1000)) / batch_size)
+
+        print("batch_size:", batch_size, "pre_batch_time:", int(round((time.time() - pre_batch_time) * 1000)),
+              int(round((time.time() - pre_batch_time) * 1000)) / batch_size)
         detections = self.do_inference(
             bindings=bindings, inputs=inputs, outputs=outputs, stream=stream,
             batch_size=batch_size
@@ -100,8 +143,12 @@ class BaseTensorRTBackend(BaseBackend):
     def prepare_inputs(self, frame: np.ndarray, transpose: bool, normalize: bool,
                        mean_subtraction: Optional[Tuple] = None) -> \
             Tuple[np.array, Resize]:
+        pre_process_start_time = time.time()
+        # h, w, c = frame.shape
+        # print(h, w, self.engine_height, self.engine_width)
         resize = Resize(frame).resize(self.engine_width, self.engine_height,
                                       Resize.ResizeType.EXACT)
+        # print("resize take:", int(round((time.time() - pre_process_start_time) * 1000)))
 
         if transpose:
             resize.frame = np.transpose(resize.frame, (2, 0, 1))
@@ -114,6 +161,7 @@ class BaseTensorRTBackend(BaseBackend):
             resize.frame[..., 0] -= mean_subtraction[0]
             resize.frame[..., 1] -= mean_subtraction[1]
             resize.frame[..., 2] -= mean_subtraction[2]
+        # print("prepare input take:", int(round((time.time() - pre_process_start_time) * 1000)))
         return resize.frame, resize
 
     def allocate_buffers(self, batch_size=1):
@@ -152,12 +200,14 @@ class BaseTensorRTBackend(BaseBackend):
         return inputs, outputs, bindings, stream
 
     def do_inference(self, bindings, inputs, outputs, stream, batch_size=1):
+        inference_start_time = time.time()
+
         # Transfer input data to the GPU.
         [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
         # Run inference.
         # todo: try execute synchronously
-        self.context.execute_async(
-            batch_size=batch_size, bindings=bindings, stream_handle=stream.handle
+        self.context.execute(
+            batch_size=batch_size, bindings=bindings
         )
         # Transfer predictions back from the GPU.
         [cuda.memcpy_dtoh_async(out.host, out.device, stream) for out in outputs]
@@ -176,6 +226,11 @@ class BaseTensorRTBackend(BaseBackend):
             for batch_output in batch_outputs:
                 final_output.append(batch_output[i])
             final_outputs.append(final_output)
+        print("batch_size:", batch_size,
+              "TensorRT inference time: {} ms".format(
+                  int(round((time.time() - inference_start_time) * 1000))
+              )
+              )
         return final_outputs
 
     def _prepare_post_process(self):
