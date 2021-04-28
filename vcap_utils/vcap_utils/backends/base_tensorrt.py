@@ -1,10 +1,8 @@
 import numpy as np
-import cupy as cp
 
 import pycuda.driver as cuda
 import tensorrt as trt
 import pycuda.autoinit
-import time
 
 from typing import Dict, List, Tuple, Optional, Any
 
@@ -32,11 +30,6 @@ class HostDeviceMem(object):
         return self.__str__()
 
 
-def load_engine(trt_runtime, engine_data):
-    engine = trt_runtime.deserialize_cuda_engine(engine_data)
-    return engine
-
-
 class AllocatedBuffer:
     def __init__(self, inputs_, outputs_, bindings_, stream_):
         self.inputs = inputs_
@@ -51,7 +44,8 @@ class BaseTensorRTBackend(BaseBackend):
         TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
         self.trt_runtime = trt.Runtime(TRT_LOGGER)
         # load the engine
-        self.trt_engine = load_engine(self.trt_runtime, engine_bytes)
+        self.trt_engine = self.trt_runtime.deserialize_cuda_engine(engine_bytes)
+
         # create execution context
         self.context = self.trt_engine.create_execution_context()
         # create buffers for inference
@@ -65,6 +59,8 @@ class BaseTensorRTBackend(BaseBackend):
         self.engine_width = width
         self.engine_height = height
 
+        # preallocate resources for post process
+        # todo: post process is only need for detectors
         self._prepare_post_process()
 
     def batch_predict(self, input_data_list: List[Any]) -> List[Any]:
@@ -80,58 +76,18 @@ class BaseTensorRTBackend(BaseBackend):
             for result in self._process_batch(batch):
                 yield result
 
-    def _process_batch(self, input_data: List[np.array]):
-        pre_batch_time = time.time()
+    def _process_batch(self, input_data: List[np.array]) -> List[List[float]]:
         batch_size = len(input_data)
-        # input_data_cuppy = [cp.array(data) for data in input_data]
-        """Ideas
-        1) Try raveling before concatenate
-        2) Instead of concatenating, try generating an array of the size and shape of what the concatenated image WOULD 
-            be, then copy the raveled images into their respective places in the array
-        """
-        ravel_time = time.time()
-        raveled_input = [data.ravel() for data in input_data]
-        print("batch_size:", batch_size, "ravel time:", int(round((time.time() - ravel_time) * 1000)),
-              int(round((time.time() - ravel_time) * 1000)) / batch_size)
-
-        concatenate_time = time.time()
-        batched_image = np.concatenate(raveled_input, axis=0)
-        #image_size = len(raveled_input[0])
-        #batched_image = np.zeros((1, batch_size * image_size))
-        #for index, image in enumerate(batched_image):
-        #    batched_image[index * image_size:(index + 1) * image_size] = image
-        print("batch_size:", batch_size, "concatenate time:", int(round((time.time() - concatenate_time) * 1000)),
-              int(round((time.time() - concatenate_time) * 1000)) / batch_size)
-
-        # image_size = self.engine_height * self.engine_width
-        # batched_image = np.zeros((1, batch_size * image_size))
-        # for index, image in enumerate(batched_image):
-        #    for row_index, row in enumerate(image):
-        #        batched_image[index * image_size + row_index * self.engine_width:(index+1) * image_size + row_index * self.engine_width] = row
-
-        # for data in input_data:
-        #    batch_image_array.append(data.ravel())
-
-        # batched_image = np.concatenate(input_data, axis=0)
-        # print(type(batched_image))
         prepared_buffer = self.buffers[batch_size]
         inputs = prepared_buffer.inputs
         outputs = prepared_buffer.outputs
         bindings = prepared_buffer.bindings
         stream = prepared_buffer.stream
-        copy_time = time.time()
-        # raveled_image = batched_image.ravel()
+        # todo: get dtype from engine
+        inputs[0].host = np.ascontiguousarray(input_data, dtype=np.float32)
 
-        # np.copyto(inputs[0].host, raveled_image)
-        np.copyto(inputs[0].host, batched_image)
-        print("batch_size:", batch_size, "copy time:", int(round((time.time() - copy_time) * 1000)),
-              int(round((time.time() - copy_time) * 1000)) / batch_size)
-
-        print("batch_size:", batch_size, "pre_batch_time:", int(round((time.time() - pre_batch_time) * 1000)),
-              int(round((time.time() - pre_batch_time) * 1000)) / batch_size)
         detections = self.do_inference(
-            bindings=bindings, inputs=inputs, outputs=outputs, stream=stream,
-            batch_size=batch_size
+            bindings=bindings, inputs=inputs, outputs=outputs, stream=stream, batch_size=batch_size
         )
         return detections
 
@@ -143,13 +99,8 @@ class BaseTensorRTBackend(BaseBackend):
     def prepare_inputs(self, frame: np.ndarray, transpose: bool, normalize: bool,
                        mean_subtraction: Optional[Tuple] = None) -> \
             Tuple[np.array, Resize]:
-        pre_process_start_time = time.time()
-        # h, w, c = frame.shape
-        # print(h, w, self.engine_height, self.engine_width)
         resize = Resize(frame).resize(self.engine_width, self.engine_height,
                                       Resize.ResizeType.EXACT)
-        # print("resize take:", int(round((time.time() - pre_process_start_time) * 1000)))
-
         if transpose:
             resize.frame = np.transpose(resize.frame, (2, 0, 1))
         if normalize:
@@ -161,18 +112,12 @@ class BaseTensorRTBackend(BaseBackend):
             resize.frame[..., 0] -= mean_subtraction[0]
             resize.frame[..., 1] -= mean_subtraction[1]
             resize.frame[..., 2] -= mean_subtraction[2]
-        # print("prepare input take:", int(round((time.time() - pre_process_start_time) * 1000)))
         return resize.frame, resize
 
-    def allocate_buffers(self, batch_size=1):
+    def allocate_buffers(self, batch_size: int = 1) -> \
+            Tuple[List[HostDeviceMem], List[HostDeviceMem], List[int], cuda.Stream]:
         """Allocates host and device buffer for TRT engine inference.
-        This function is similair to the one in common.py, but
-        converts network outputs (which are np.float32) appropriately
-        before writing them to Python buffer. This is needed, since
-        TensorRT plugins doesn't support output type description, and
-        in our particular case, we use NMS plugin as network output.
         Args:
-            engine (trt.ICudaEngine): TensorRT engine
             batch_size: batch size for the input/output memory
         Returns:
             inputs [HostDeviceMem]: engine input memory
@@ -199,13 +144,14 @@ class BaseTensorRTBackend(BaseBackend):
                 outputs.append(HostDeviceMem(host_mem, device_mem))
         return inputs, outputs, bindings, stream
 
-    def do_inference(self, bindings, inputs, outputs, stream, batch_size=1):
-        inference_start_time = time.time()
-
+    def do_inference(self, bindings: List[int], inputs: List[HostDeviceMem], outputs: List[HostDeviceMem],
+                     stream: cuda.Stream, batch_size: int = 1) -> List[List[float]]:
         # Transfer input data to the GPU.
         [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
         # Run inference.
-        # todo: try execute synchronously
+        # todo: use async or sync api?
+        # According to https://docs.nvidia.com/deeplearning/tensorrt/best-practices/index.html#optimize-python
+        # the performance should be almost identical
         self.context.execute(
             batch_size=batch_size, bindings=bindings
         )
@@ -226,11 +172,6 @@ class BaseTensorRTBackend(BaseBackend):
             for batch_output in batch_outputs:
                 final_output.append(batch_output[i])
             final_outputs.append(final_output)
-        print("batch_size:", batch_size,
-              "TensorRT inference time: {} ms".format(
-                  int(round((time.time() - inference_start_time) * 1000))
-              )
-              )
         return final_outputs
 
     def _prepare_post_process(self):
@@ -251,7 +192,8 @@ class BaseTensorRTBackend(BaseBackend):
             value = (i * self.stride + 0.5) / self.box_norm
             self.grid_centers_w.append(value)
 
-    def _apply_box_norm(self, o1, o2, o3, o4, x, y):
+    def _apply_box_norm(self, o1: float, o2: float, o3: float, o4: float, x: int, y: int) -> \
+            Tuple[float, float, float, float]:
         """
         Applies the GridNet box normalization
         Args:
@@ -274,17 +216,17 @@ class BaseTensorRTBackend(BaseBackend):
         o4 = (o4 + self.grid_centers_h[y]) * self.box_norm
         return o1, o2, o3, o4
 
-    def postprocess(self, outputs, min_confidence, analysis_classes, wh_format=True):
+    def postprocess(self, outputs: List[float], min_confidence: float, analysis_classes: List[int], wh_format=True)-> \
+            Tuple[List[List[int]], List[int], List[float]]:
         """
         Postprocesses the inference output
         Args:
             outputs (list of float): inference output
             min_confidence (float): min confidence to accept detection
             analysis_classes (list of int): indices of the classes to consider
-
+            wh_format (bool): return bbox in (xmin, ymin, w, h) or (xmin, ymin, xmax, ymax)
         Returns: list of list tuple: each element is a two list tuple (x, y) representing the corners of a bb
         """
-        # print(len(outputs))
         bbs = []
         class_ids = []
         scores = []
