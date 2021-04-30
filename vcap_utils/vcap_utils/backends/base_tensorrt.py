@@ -2,6 +2,7 @@ import numpy as np
 
 import pycuda.driver as cuda
 import tensorrt as trt
+import cv2
 
 from typing import Dict, List, Tuple, Optional, Any
 
@@ -11,6 +12,8 @@ from vcap import (
     OPTION_TYPE,
     BaseStreamState,
     BaseBackend,
+    rect_to_coords,
+    DetectionNode,
 )
 
 
@@ -217,53 +220,55 @@ class BaseTensorRTBackend(BaseBackend):
         o4 = (o4 + self.grid_centers_h[y]) * self.box_norm
         return o1, o2, o3, o4
 
-    def postprocess(self, outputs: List[float], min_confidence: float, analysis_classes: List[int], wh_format=True) -> \
-            Tuple[List[List[int]], List[int], List[float]]:
-        """
-        Postprocesses the inference output
-        Args:
-            outputs (list of float): inference output
-            min_confidence (float): min confidence to accept detection
-            analysis_classes (list of int): indices of the classes to consider
-            wh_format (bool): return bbox in (xmin, ymin, w, h) or (xmin, ymin, xmax, ymax)
-        Returns: list of list tuple: each element is a two list tuple (x, y) representing the corners of a bb
-        """
+    def parse_detection_results(
+            self, results: List[List[float]],
+            resize: Resize,
+            label_map: Dict[int, str],
+            min_confidence: float = 0.0,
+    ) -> List[DetectionNode]:
         bbs = []
         class_ids = []
         scores = []
-        for c in analysis_classes:
+        for c in label_map.keys():
 
             x1_idx = c * 4 * self.grid_size
             y1_idx = x1_idx + self.grid_size
             x2_idx = y1_idx + self.grid_size
             y2_idx = x2_idx + self.grid_size
 
-            boxes = outputs[0]
+            boxes = results[0]
             for h in range(self.grid_h):
                 for w in range(self.grid_w):
                     i = w + h * self.grid_w
-                    score = outputs[1][c * self.grid_size + i]
+                    score = results[1][c * self.grid_size + i]
                     if score >= min_confidence:
                         o1 = boxes[x1_idx + w + h * self.grid_w]
                         o2 = boxes[y1_idx + w + h * self.grid_w]
                         o3 = boxes[x2_idx + w + h * self.grid_w]
                         o4 = boxes[y2_idx + w + h * self.grid_w]
-
                         o1, o2, o3, o4 = self._apply_box_norm(o1, o2, o3, o4, w, h)
-
                         xmin = int(o1)
                         ymin = int(o2)
                         xmax = int(o3)
                         ymax = int(o4)
-                        if wh_format:
-                            bbs.append([xmin, ymin, xmax - xmin, ymax - ymin])
-                        else:
-                            bbs.append([xmin, ymin, xmax, ymax])
+                        bbs.append([xmin, ymin, xmax - xmin, ymax - ymin])
                         class_ids.append(c)
                         scores.append(float(score))
-
-        return bbs, class_ids, scores
-
-    def close(self):
-        super().close()
-        self.ctx.pop()
+        indexes = cv2.dnn.NMSBoxes(bbs, scores, min_confidence, 0.5)
+        detections = []
+        for idx in indexes:
+            idx = int(idx)
+            xmin, ymin, w, h = bbs[idx]
+            class_id = class_ids[idx]
+            class_name = label_map[class_id]
+            detections.append(
+                DetectionNode(
+                    name=class_name,
+                    coords=rect_to_coords(
+                        [xmin, ymin, (xmin + w), (ymin + h)]
+                    ),
+                    extra_data={"detection_confidence": scores[idx]},
+                )
+            )
+        resize.scale_and_offset_detection_nodes(detections)
+        return detections
