@@ -2,19 +2,15 @@ import numpy as np
 
 import pycuda.driver as cuda
 import tensorrt as trt
-import pycuda.autoinit
 
 from typing import Dict, List, Tuple, Optional, Any
 
 from vcap import (
-    Crop,
-    DetectionNode,
     Resize,
     DETECTION_NODE_TYPE,
     OPTION_TYPE,
     BaseStreamState,
     BaseBackend,
-    rect_to_coords,
 )
 
 
@@ -39,13 +35,16 @@ class AllocatedBuffer:
 
 
 class BaseTensorRTBackend(BaseBackend):
-    def __init__(self, engine_bytes, width, height):
+    def __init__(self, engine_bytes, width, height, device_id):
         super().__init__()
+        gpu_devide_id = int(device_id[4:])
+        cuda.init()
+        dev = cuda.Device(gpu_devide_id)
+        self.ctx = dev.make_context()
         TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
         self.trt_runtime = trt.Runtime(TRT_LOGGER)
         # load the engine
         self.trt_engine = self.trt_runtime.deserialize_cuda_engine(engine_bytes)
-
         # create execution context
         self.context = self.trt_engine.create_execution_context()
         # create buffers for inference
@@ -147,6 +146,7 @@ class BaseTensorRTBackend(BaseBackend):
     def do_inference(self, bindings: List[int], inputs: List[HostDeviceMem], outputs: List[HostDeviceMem],
                      stream: cuda.Stream, batch_size: int = 1) -> List[List[float]]:
         # Transfer input data to the GPU.
+        self.ctx.push()
         [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
         # Run inference.
         # todo: use async or sync api?
@@ -172,6 +172,7 @@ class BaseTensorRTBackend(BaseBackend):
             for batch_output in batch_outputs:
                 final_output.append(batch_output[i])
             final_outputs.append(final_output)
+        self.ctx.pop()
         return final_outputs
 
     def _prepare_post_process(self):
@@ -216,7 +217,7 @@ class BaseTensorRTBackend(BaseBackend):
         o4 = (o4 + self.grid_centers_h[y]) * self.box_norm
         return o1, o2, o3, o4
 
-    def postprocess(self, outputs: List[float], min_confidence: float, analysis_classes: List[int], wh_format=True)-> \
+    def postprocess(self, outputs: List[float], min_confidence: float, analysis_classes: List[int], wh_format=True) -> \
             Tuple[List[List[int]], List[int], List[float]]:
         """
         Postprocesses the inference output
@@ -262,3 +263,7 @@ class BaseTensorRTBackend(BaseBackend):
                         scores.append(float(score))
 
         return bbs, class_ids, scores
+
+    def close(self):
+        super().close()
+        self.ctx.pop()
