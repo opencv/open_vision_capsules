@@ -272,3 +272,7 @@ class BaseTensorRTBackend(BaseBackend):
             )
         resize.scale_and_offset_detection_nodes(detections)
         return detections
+
+    def close(self) -> None:
+        super().close()
+        self.ctx.pop()
