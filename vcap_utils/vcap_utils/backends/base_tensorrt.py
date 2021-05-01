@@ -4,7 +4,7 @@ import pycuda.driver as cuda
 import tensorrt as trt
 import cv2
 
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Generator
 
 from vcap import (
     Resize,
@@ -62,7 +62,8 @@ class BaseTensorRTBackend(BaseBackend):
         # todo: post process is only need for detectors
         self._prepare_post_process()
 
-    def batch_predict(self, input_data_list: List[Any]) -> List[Any]:
+    def batch_predict(self, input_data_list: List[np.ndarray]) \
+            -> Generator[List[DetectionNode], None, None]:
         task_size = len(input_data_list)
         curr_index = 0
         while curr_index < task_size:
