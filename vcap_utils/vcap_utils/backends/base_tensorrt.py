@@ -80,16 +80,16 @@ class BaseTensorRTBackend(BaseBackend):
         batch_size = len(input_data)
         prepared_buffer = self.buffers[batch_size]
         inputs = prepared_buffer.inputs
-        outputs = prepared_buffer.outputs
-        bindings = prepared_buffer.bindings
-        stream = prepared_buffer.stream
         # todo: get dtype from engine
         inputs[0].host = np.ascontiguousarray(input_data, dtype=np.float32)
 
-        detections = self._do_inference(
-            bindings=bindings, inputs=inputs, outputs=outputs, stream=stream, batch_size=batch_size
+        return self._do_inference(
+            bindings=prepared_buffer.bindings,
+            inputs=inputs,
+            outputs=prepared_buffer.outputs,
+            stream=prepared_buffer.stream,
+            batch_size=batch_size
         )
-        return detections
 
     def prepare_inputs(self, frame: np.ndarray, transpose: bool, normalize: bool,
                        mean_subtraction: Optional[Tuple] = None) -> \
