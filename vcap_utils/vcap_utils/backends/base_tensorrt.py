@@ -40,13 +40,13 @@ class BaseTensorRTBackend(BaseBackend):
         gpu_devide_id = int(device_id[4:])
         cuda.init()
         dev = cuda.Device(gpu_devide_id)
-        self.ctx = dev.make_context()
+        self.cuda_context = dev.make_context()
         TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
         self.trt_runtime = trt.Runtime(TRT_LOGGER)
         # load the engine
         self.trt_engine = self.trt_runtime.deserialize_cuda_engine(engine_bytes)
         # create execution context
-        self.context = self.trt_engine.create_execution_context()
+        self.trt_context = self.trt_engine.create_execution_context()
         # create buffers for inference
         self.buffers = {}
         for batch_size in range(1, self.trt_engine.max_batch_size + 1):
@@ -141,13 +141,13 @@ class BaseTensorRTBackend(BaseBackend):
     def do_inference(self, bindings: List[int], inputs: List[HostDeviceMem], outputs: List[HostDeviceMem],
                      stream: cuda.Stream, batch_size: int = 1) -> List[List[float]]:
         # Transfer input data to the GPU.
-        self.ctx.push()
+        self.cuda_context.push()
         [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
         # Run inference.
         # todo: use async or sync api?
         # According to https://docs.nvidia.com/deeplearning/tensorrt/best-practices/index.html#optimize-python
         # the performance should be almost identical
-        self.context.execute(
+        self.trt_context.execute(
             batch_size=batch_size, bindings=bindings
         )
         # Transfer predictions back from the GPU.
@@ -167,7 +167,7 @@ class BaseTensorRTBackend(BaseBackend):
             for batch_output in batch_outputs:
                 final_output.append(batch_output[i])
             final_outputs.append(final_output)
-        self.ctx.pop()
+        self.cuda_context.pop()
         return final_outputs
 
     def _prepare_post_process(self):
@@ -267,4 +267,4 @@ class BaseTensorRTBackend(BaseBackend):
 
     def close(self) -> None:
         super().close()
-        self.ctx.pop()
+        self.cuda_context.pop()
