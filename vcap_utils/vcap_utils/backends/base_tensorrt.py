@@ -86,7 +86,7 @@ class BaseTensorRTBackend(BaseBackend):
         # todo: get dtype from engine
         inputs[0].host = np.ascontiguousarray(input_data, dtype=np.float32)
 
-        detections = self.do_inference(
+        detections = self._do_inference(
             bindings=bindings, inputs=inputs, outputs=outputs, stream=stream, batch_size=batch_size
         )
         return detections
@@ -139,8 +139,11 @@ class BaseTensorRTBackend(BaseBackend):
                 outputs.append(HostDeviceMem(host_mem, device_mem))
         return inputs, outputs, bindings, stream
 
-    def do_inference(self, bindings: List[int], inputs: List[HostDeviceMem], outputs: List[HostDeviceMem],
-                     stream: cuda.Stream, batch_size: int = 1) -> List[List[float]]:
+    def _do_inference(self, bindings: List[int],
+                      inputs: List[HostDeviceMem],
+                      outputs: List[HostDeviceMem],
+                      stream: cuda.Stream,
+                      batch_size: int = 1) -> List[List[float]]:
         # Transfer input data to the GPU.
         self.cuda_context.push()
         [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
