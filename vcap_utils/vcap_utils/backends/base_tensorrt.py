@@ -171,21 +171,21 @@ class BaseTensorRTBackend(BaseBackend):
         return final_outputs
 
     def _prepare_post_process(self):
-        self.stride = 16
+        stride = 16
         self.box_norm = 35.0
-        self.grid_h = int(self.engine_height / self.stride)
-        self.grid_w = int(self.engine_width / self.stride)
+        self.grid_h = int(self.engine_height / stride)
+        self.grid_w = int(self.engine_width / stride)
         self.grid_size = self.grid_h * self.grid_w
 
         self.grid_centers_w = []
         self.grid_centers_h = []
 
         for i in range(self.grid_h):
-            value = (i * self.stride + 0.5) / self.box_norm
+            value = (i * stride + 0.5) / self.box_norm
             self.grid_centers_h.append(value)
 
         for i in range(self.grid_w):
-            value = (i * self.stride + 0.5) / self.box_norm
+            value = (i * stride + 0.5) / self.box_norm
             self.grid_centers_w.append(value)
 
     def _apply_box_norm(self, o1: float, o2: float, o3: float, o4: float, x: int, y: int) -> \
