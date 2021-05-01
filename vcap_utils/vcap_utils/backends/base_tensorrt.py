@@ -8,9 +8,6 @@ from typing import Dict, List, Tuple, Optional, Any
 
 from vcap import (
     Resize,
-    DETECTION_NODE_TYPE,
-    OPTION_TYPE,
-    BaseStreamState,
     BaseBackend,
     rect_to_coords,
     DetectionNode,
@@ -38,7 +35,7 @@ class AllocatedBuffer:
 
 
 class BaseTensorRTBackend(BaseBackend):
-    def __init__(self, engine_bytes, width, height, device_id):
+    def __init__(self, engine_bytes: bytes, width: int, height: int, device_id: str):
         super().__init__()
         gpu_devide_id = int(device_id[4:])
         cuda.init()
@@ -92,11 +89,6 @@ class BaseTensorRTBackend(BaseBackend):
             bindings=bindings, inputs=inputs, outputs=outputs, stream=stream, batch_size=batch_size
         )
         return detections
-
-    def process_frame(self, frame: np.ndarray, detection_node: DETECTION_NODE_TYPE,
-                      options: Dict[str, OPTION_TYPE],
-                      state: BaseStreamState) -> DETECTION_NODE_TYPE:
-        pass
 
     def prepare_inputs(self, frame: np.ndarray, transpose: bool, normalize: bool,
                        mean_subtraction: Optional[Tuple] = None) -> \
