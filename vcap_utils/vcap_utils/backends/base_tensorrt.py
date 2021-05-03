@@ -193,7 +193,7 @@ class BaseTensorRTBackend(BaseBackend):
             self.grid_centers_w.append(value)
 
     def _apply_box_norm(self, o1: float, o2: float, o3: float, o4: float, x: int, y: int) -> \
-            Tuple[float, float, float, float]:
+            Tuple[int, int, int, int]:
         """
         Applies the GridNet box normalization
         Args:
@@ -205,16 +205,16 @@ class BaseTensorRTBackend(BaseBackend):
             y: column index on the grid
 
         Returns:
-            float: rescaled first argument
-            float: rescaled second argument
-            float: rescaled third argument
-            float: rescaled fourth argument
+            int: rescaled first argument
+            int: rescaled second argument
+            int: rescaled third argument
+            int: rescaled fourth argument
         """
-        o1 = (o1 - self.grid_centers_w[x]) * -self.box_norm
-        o2 = (o2 - self.grid_centers_h[y]) * -self.box_norm
-        o3 = (o3 + self.grid_centers_w[x]) * self.box_norm
-        o4 = (o4 + self.grid_centers_h[y]) * self.box_norm
-        return o1, o2, o3, o4
+        xmin = int((o1 - self.grid_centers_w[x]) * -self.box_norm)
+        ymin = int((o2 - self.grid_centers_h[y]) * -self.box_norm)
+        xmax = int((o3 + self.grid_centers_w[x]) * self.box_norm)
+        ymax = int((o4 + self.grid_centers_h[y]) * self.box_norm)
+        return xmin, ymin, xmax, ymax
 
     def parse_detection_results(
             self, results: List[List[float]],
@@ -272,3 +272,4 @@ class BaseTensorRTBackend(BaseBackend):
     def close(self) -> None:
         super().close()
         self.cuda_context.pop()
+
