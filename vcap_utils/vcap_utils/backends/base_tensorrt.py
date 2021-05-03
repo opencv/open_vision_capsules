@@ -226,7 +226,6 @@ class BaseTensorRTBackend(BaseBackend):
         class_ids = []
         scores = []
         for c in label_map.keys():
-
             x1_idx = c * 4 * self.grid_size
             y1_idx = x1_idx + self.grid_size
             x2_idx = y1_idx + self.grid_size
@@ -242,11 +241,7 @@ class BaseTensorRTBackend(BaseBackend):
                         o2 = boxes[y1_idx + w + h * self.grid_w]
                         o3 = boxes[x2_idx + w + h * self.grid_w]
                         o4 = boxes[y2_idx + w + h * self.grid_w]
-                        o1, o2, o3, o4 = self._apply_box_norm(o1, o2, o3, o4, w, h)
-                        xmin = int(o1)
-                        ymin = int(o2)
-                        xmax = int(o3)
-                        ymax = int(o4)
+                        xmin, ymin, xmax, ymax = self._apply_box_norm(o1, o2, o3, o4, w, h)
                         bbs.append([xmin, ymin, xmax - xmin, ymax - ymin])
                         class_ids.append(c)
                         scores.append(float(score))
