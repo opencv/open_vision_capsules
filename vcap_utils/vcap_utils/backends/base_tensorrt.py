@@ -35,9 +35,9 @@ class AllocatedBuffer:
 
 
 class BaseTensorRTBackend(BaseBackend):
-    def __init__(self, engine_bytes: bytes, width: int, height: int, device_id: str):
+    def __init__(self, engine_bytes: bytes, width: int, height: int, device_name: str):
         super().__init__()
-        gpu_devide_id = int(device_id[4:])
+        gpu_devide_id = int(device_name[4:])
         cuda.init()
         dev = cuda.Device(gpu_devide_id)
         self.cuda_context = dev.make_context()
