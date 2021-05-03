@@ -13,6 +13,8 @@ from vcap import (
     DetectionNode,
 )
 
+from vcap_utils import non_max_suppression
+
 
 class HostDeviceMem(object):
     def __init__(self, host_mem, device_mem):
@@ -222,11 +224,9 @@ class BaseTensorRTBackend(BaseBackend):
             label_map: Dict[int, str],
             min_confidence: float = 0.0,
     ) -> List[DetectionNode]:
-        bbs = []
-        class_ids = []
-        scores = []
-        for c in label_map.keys():
-            x1_idx = c * 4 * self.grid_size
+        detection_nodes: List[DetectionNode] = []
+        for class_id, class_name in label_map.items():
+            x1_idx = class_id * 4 * self.grid_size
             y1_idx = x1_idx + self.grid_size
             x2_idx = y1_idx + self.grid_size
             y2_idx = x2_idx + self.grid_size
@@ -235,36 +235,24 @@ class BaseTensorRTBackend(BaseBackend):
             for h in range(self.grid_h):
                 for w in range(self.grid_w):
                     i = w + h * self.grid_w
-                    score = results[1][c * self.grid_size + i]
+                    score = results[1][class_id * self.grid_size + i]
                     if score >= min_confidence:
                         o1 = boxes[x1_idx + w + h * self.grid_w]
                         o2 = boxes[y1_idx + w + h * self.grid_w]
                         o3 = boxes[x2_idx + w + h * self.grid_w]
                         o4 = boxes[y2_idx + w + h * self.grid_w]
                         xmin, ymin, xmax, ymax = self._apply_box_norm(o1, o2, o3, o4, w, h)
-                        bbs.append([xmin, ymin, xmax - xmin, ymax - ymin])
-                        class_ids.append(c)
-                        scores.append(float(score))
-        indexes = cv2.dnn.NMSBoxes(bbs, scores, min_confidence, 0.5)
-        detections = []
-        for idx in indexes:
-            idx = int(idx)
-            xmin, ymin, w, h = bbs[idx]
-            class_id = class_ids[idx]
-            class_name = label_map[class_id]
-            detections.append(
-                DetectionNode(
-                    name=class_name,
-                    coords=rect_to_coords(
-                        [xmin, ymin, (xmin + w), (ymin + h)]
-                    ),
-                    extra_data={"detection_confidence": scores[idx]},
-                )
-            )
-        resize.scale_and_offset_detection_nodes(detections)
-        return detections
+                        detection_nodes.append(DetectionNode(
+                            name=class_name,
+                            coords=rect_to_coords(
+                                [xmin, ymin, xmax, ymax]
+                            ),
+                            extra_data={"detection_confidence": score},
+                        ))
+        nodes = non_max_suppression(detection_nodes, max_bbox_overlap=0.5)
+        resize.scale_and_offset_detection_nodes(detection_nodes)
+        return detection_nodes
 
     def close(self) -> None:
         super().close()
         self.cuda_context.pop()
-
