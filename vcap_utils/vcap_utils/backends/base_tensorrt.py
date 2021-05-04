@@ -2,7 +2,6 @@ import numpy as np
 
 import pycuda.driver as cuda
 import tensorrt as trt
-import cv2
 
 from typing import Dict, List, Tuple, Optional, Generator
 
@@ -12,8 +11,7 @@ from vcap import (
     rect_to_coords,
     DetectionNode,
 )
-
-from vcap_utils import non_max_suppression
+from vcap_utils.algorithms import non_max_suppression
 
 
 class HostDeviceMem(object):
@@ -167,12 +165,8 @@ class BaseTensorRTBackend(BaseBackend):
             out_array_by_batch = np.split(entire_out_array, batch_size)
             out_lists = [out_array.tolist() for out_array in out_array_by_batch]
             batch_outputs.append(out_lists)
-        final_outputs = []
-        for i in range(len(batch_outputs[0])):
-            final_output = []
-            for batch_output in batch_outputs:
-                final_output.append(batch_output[i])
-            final_outputs.append(final_output)
+        final_outputs = list(zip(*batch_outputs))
+        final_outputs = [list(item) for item in final_outputs]
         self.cuda_context.pop()
         return final_outputs
 
@@ -183,16 +177,8 @@ class BaseTensorRTBackend(BaseBackend):
         self.grid_w = int(self.engine_width / stride)
         self.grid_size = self.grid_h * self.grid_w
 
-        self.grid_centers_w = []
-        self.grid_centers_h = []
-
-        for i in range(self.grid_h):
-            value = (i * stride + 0.5) / self.box_norm
-            self.grid_centers_h.append(value)
-
-        for i in range(self.grid_w):
-            value = (i * stride + 0.5) / self.box_norm
-            self.grid_centers_w.append(value)
+        self.grid_centers_h = [(i * stride + 0.5) / self.box_norm for i in range(self.grid_h)]
+        self.grid_centers_w = [(i * stride + 0.5) / self.box_norm for i in range(self.grid_w)]
 
     def _apply_box_norm(self, o1: float, o2: float, o3: float, o4: float, x: int, y: int) -> \
             Tuple[int, int, int, int]:
@@ -249,7 +235,7 @@ class BaseTensorRTBackend(BaseBackend):
                             ),
                             extra_data={"detection_confidence": score},
                         ))
-        nodes = non_max_suppression(detection_nodes, max_bbox_overlap=0.5)
+        detection_nodes = non_max_suppression(detection_nodes, max_bbox_overlap=0.5)
         resize.scale_and_offset_detection_nodes(detection_nodes)
         return detection_nodes
 
