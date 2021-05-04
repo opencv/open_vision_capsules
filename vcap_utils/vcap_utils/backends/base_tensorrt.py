@@ -79,13 +79,12 @@ class BaseTensorRTBackend(BaseBackend):
     def _process_batch(self, input_data: List[np.array]) -> List[List[float]]:
         batch_size = len(input_data)
         prepared_buffer = self.buffers[batch_size]
-        inputs = prepared_buffer.inputs
         # todo: get dtype from engine
-        inputs[0].host = np.ascontiguousarray(input_data, dtype=np.float32)
+        prepared_buffer.inputs[0].host = np.ascontiguousarray(input_data, dtype=np.float32)
 
         return self._do_inference(
             bindings=prepared_buffer.bindings,
-            inputs=inputs,
+            inputs=prepared_buffer.inputs,
             outputs=prepared_buffer.outputs,
             stream=prepared_buffer.stream,
             batch_size=batch_size
