@@ -25,6 +25,8 @@ setup(
         "scikit-learn==0.22.2",
         "numpy>=1.16,<2",
         "tensorflow-gpu==1.15.4",
+        "pycuda>=2019.1.1",
+        "tensorrt==7.2.3.4",
     ],
     extras_require={
         "tests": test_packages,

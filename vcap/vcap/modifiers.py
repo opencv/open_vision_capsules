@@ -196,7 +196,6 @@ class Resize:
 
     def resize(self, resize_width: int, resize_height: int,
                resize_type: ResizeType):
-
         frame_width = self.frame.shape[1]
         frame_height = self.frame.shape[0]
 
@@ -251,11 +250,11 @@ class Resize:
         # Account for scaling
         scale_width = new_width / frame_width
         scale_height = new_height / frame_height
-        self._operations.append(
-            (self._OperationType.SCALE, (scale_width, scale_height))
-        )
-
-        self.frame = cv2.resize(self.frame, (new_width, new_height))
+        if new_width != frame_width or new_height != frame_height:
+            self._operations.append(
+                (self._OperationType.SCALE, (scale_width, scale_height))
+            )
+            self.frame = cv2.resize(self.frame, (new_width, new_height))
 
         return self
 
