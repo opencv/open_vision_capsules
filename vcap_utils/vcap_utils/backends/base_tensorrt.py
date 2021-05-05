@@ -41,7 +41,7 @@ class BaseTensorRTBackend(BaseBackend):
         cuda.init()
         dev = cuda.Device(gpu_devide_id)
         self.cuda_context = dev.make_context()
-        TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
+        TRT_LOGGER = trt.Logger(trt.Logger.INFO)
         self.trt_runtime = trt.Runtime(TRT_LOGGER)
         # load the engine
         self.trt_engine = self.trt_runtime.deserialize_cuda_engine(engine_bytes)
@@ -232,7 +232,7 @@ class BaseTensorRTBackend(BaseBackend):
                             coords=rect_to_coords(
                                 [xmin, ymin, xmax, ymax]
                             ),
-                            extra_data={"detection_confidence": score},
+                            extra_data={"detection_confidence": float(score)},
                         ))
         detection_nodes = non_max_suppression(detection_nodes, max_bbox_overlap=0.5)
         resize.scale_and_offset_detection_nodes(detection_nodes)
