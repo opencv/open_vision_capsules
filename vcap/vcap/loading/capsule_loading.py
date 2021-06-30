@@ -91,6 +91,17 @@ def load_capsule_from_bytes(data: bytes,
                 f"capsule's OpenVisionCapsules required major version is "
                 f"{major} but this software uses OpenVisionCapsules "
                 f"{MAJOR_COMPATIBLE_VERSION}.{MINOR_COMPATIBLE_VERSION}.")
+        elif (MAJOR_COMPATIBLE_VERSION == 0
+              and minor != MINOR_COMPATIBLE_VERSION):
+            # Because vcap has not yet reached a 1.0 API, while the major
+            # version is 0 then minor version will be required to match.
+            raise IncompatibleCapsuleError(
+                "The capsule is not compatible with this software. The "
+                "capsule's OpenVisionCapsules required version is "
+                f"{major}.{minor}, but this software uses OpenVisionCapsules "
+                f"{MAJOR_COMPATIBLE_VERSION.MINOR_COMPATIBLE_VERSION}"
+            )
+
         if minor > MINOR_COMPATIBLE_VERSION:
             raise IncompatibleCapsuleError(
                 f"The capsule requires a version of OpenVisionCapsules "
