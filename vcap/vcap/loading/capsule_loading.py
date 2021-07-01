@@ -99,7 +99,7 @@ def load_capsule_from_bytes(data: bytes,
                 "The capsule is not compatible with this software. The "
                 "capsule's OpenVisionCapsules required version is "
                 f"{major}.{minor}, but this software uses OpenVisionCapsules "
-                f"{MAJOR_COMPATIBLE_VERSION.MINOR_COMPATIBLE_VERSION}"
+                f"{MAJOR_COMPATIBLE_VERSION}.{MINOR_COMPATIBLE_VERSION}"
             )
 
         if minor > MINOR_COMPATIBLE_VERSION:
