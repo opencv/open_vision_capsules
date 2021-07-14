@@ -114,8 +114,8 @@ def load_capsule_from_bytes(data: bytes,
         capsule_module = ModuleType(module_name)
 
         # Allow the capsule.py to import other files in the capsule
-        sys.meta_path.insert(
-            1, ZipFinder(capsule_file, source_path, module_name))
+        zip_finder = ZipFinder(capsule_file, source_path, module_name)
+        sys.meta_path.insert(1, zip_finder)
 
         try:
             # Run the capsule
@@ -127,7 +127,7 @@ def load_capsule_from_bytes(data: bytes,
                 f"Error: {e}")
         finally:
             # Remove custom import code
-            sys.meta_path.pop(1)
+            sys.meta_path.remove(zip_finder)
 
     # noinspection PyUnresolvedReferences
     new_capsule: BaseCapsule = capsule_module.Capsule(
