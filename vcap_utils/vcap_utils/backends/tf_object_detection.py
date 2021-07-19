@@ -18,7 +18,7 @@ class TFObjectDetector(BaseTFBackend):
     def __init__(self, model_bytes, metadata_bytes,
                  confidence_thresh=0.05,
                  device: str = None,
-                 session_config: tf.ConfigProto = None):
+                 session_config: tf.compat.v1.ConfigProto = None):
         """
         :param model_bytes: Model file data, likely a loaded *.pb file
         :param metadata_bytes: The dataset metadata file data, likely named

@@ -22,7 +22,7 @@ class OpenFaceEncoder(BaseEncoderBackend, BaseTFBackend):
 
     def __init__(self, model_bytes, model_name,
                  device: str = None,
-                 session_config: tf.ConfigProto = None):
+                 session_config: tf.compat.v1.ConfigProto = None):
         """
         :param model_bytes: Model file bytes, a loaded *.pb file
         :param model_name: The name of the model in order to load correct

@@ -14,7 +14,7 @@ class CrowdDensityCounter(BaseTFBackend):
 
     def __init__(self, model_bytes,
                  device: str=None,
-                 session_config: tf.ConfigProto=None):
+                 session_config: tf.compat.v1.ConfigProto=None):
         """
         :param model_bytes: Model file data, likely a loaded *.pb file
         :param device: The device to run the model on
