@@ -38,7 +38,7 @@ def parse_tf_model_bytes(model_bytes,
 
     # Create a session for later use
     persistent_sess = tf.compat.v1.Session(graph=detection_graph,
-                                 config=session_config)
+                                           config=session_config)
 
     return detection_graph, persistent_sess
 
