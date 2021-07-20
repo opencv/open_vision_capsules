@@ -25,7 +25,7 @@ def get_all_devices() -> List[str]:
             #
             # TODO: Use tf.config.list_physical_devices in TF 2.1
 
-            with tf.Session():
+            with tf.compat.v1.Session():
                 all_devices = device_lib.list_local_devices()
 
             # Get the device names and remove duplicates, just in case...

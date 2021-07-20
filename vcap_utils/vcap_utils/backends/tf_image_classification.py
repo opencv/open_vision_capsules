@@ -15,7 +15,7 @@ from .predictions import ClassificationPrediction
 class TFImageClassifier(BaseTFBackend):
     def __init__(self, model_bytes, metadata_bytes, model_name,
                  device: str = None,
-                 session_config: tf.ConfigProto = None):
+                 session_config: tf.compat.v1.ConfigProto = None):
         """
         :param model_bytes: Loaded model data, likely from a *.pb file
         :param metadata_bytes: Loaded dataset metadata, likely from a file
@@ -41,7 +41,7 @@ class TFImageClassifier(BaseTFBackend):
         # Create the input node to the graph, with preprocessing built-in
         with self.graph.as_default():
             # Create a new input node for images of various sizes
-            self.input_node = tf.placeholder(
+            self.input_node = tf.compat.v1.placeholder(
                 dtype=tf.float32,
                 shape=[None, self.config.img_size, self.config.img_size, 3])
 
