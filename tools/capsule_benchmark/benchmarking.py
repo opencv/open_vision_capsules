@@ -93,8 +93,12 @@ class BenchmarkSuite:
             -> datetime.timedelta:
 
         # Warm things up, such as getting model on GPU if capsule uses it
-        for _ in range(10):
-            capsule.process_frame(**self.generate_input_kwargs(capsule))
+        warmup_results = worker_pool.map(
+            lambda kwargs: capsule.process_frame(**kwargs),
+            [self.generate_input_kwargs(capsule) for _ in range(50)]
+        )
+        for _ in warmup_results:
+            pass
 
         # Generate test args before starting the test, so that the
         # benchmark is purely just for the capsule
