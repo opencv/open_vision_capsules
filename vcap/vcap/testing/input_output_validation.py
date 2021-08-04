@@ -3,6 +3,7 @@ import logging
 import random
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import sys
 from typing import Dict, List, Union, Optional
 from uuid import uuid4
 
@@ -247,7 +248,16 @@ def perform_capsule_tests(unpackaged_capsule_dir: Union[Path, str],
         verify_all_threads_closed(allowable_threads)
 
         referrers = gc.get_referrers(capsule)
-        assert len(referrers) == 1, \
+
+        if sys.version_info >= (3, 7):
+            # After Python 3.7, gc.get_referrers no longer includes stack frames in its
+            # output. Therefore, the reference held in this function is not counted.
+            # See: https://bugs.python.org/issue34608
+            expected_referrers = 0
+        else:
+            expected_referrers = 1
+
+        assert len(referrers) == expected_referrers, \
             "No one else should have a reference to this capsule anymore! " \
             f"There were {len(referrers)} references from: {referrers}. " \
             f"Capsule in question: {capsule}"
