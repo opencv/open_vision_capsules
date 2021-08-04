@@ -2,6 +2,7 @@ import configparser
 import hashlib
 import re
 import sys
+from importlib.machinery import ModuleSpec
 from io import BytesIO
 from pathlib import Path
 from types import ModuleType
@@ -112,6 +113,8 @@ def load_capsule_from_bytes(data: bytes,
 
         # With the capsule's code loaded, initialize the object
         capsule_module = ModuleType(module_name)
+        # Put the module in a package so that it can do relative imports
+        capsule_module.__package__ = module_name
 
         # Allow the capsule.py to import other files in the capsule
         zip_finder = ZipFinder(capsule_file, source_path, module_name)
