@@ -14,32 +14,55 @@ from vcap import (
 )
 
 
-def main():
-    packaged_capsule_path, unpackaged_capsule_path, image_paths = _parse_args()
+def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, detection_name, true_threshold, false_threshold):
 
     capsule = load_capsule(
         path=packaged_capsule_path, source_path=unpackaged_capsule_path
     )
-    validate_capsule(capsule)
+
+    detection_required = validate_capsule(capsule)
+
+    capsule_options = {'true threshold': true_threshold, 'false threshold': false_threshold}
+    capsule_results = []
 
     for image_path in image_paths:
         print(f"Running inference on {image_path}")
         image = cv2.imread(str(image_path))
 
+        if detection_required:
+            h_orig, w_orig = image.shape[:-1]
+            points = [[0, 0], [w_orig, h_orig]]
+
+            detections = DetectionNode(
+                name=detection_name,
+                coords=points,
+                attributes=[],
+                extra_data=[]
+            )
+            detection_node = detections
+        else:
+            detection_node = None
+
         results = capsule.process_frame(
             frame=image,
-            detection_node=None,
-            options=capsule.default_options,
+            detection_node=detection_node,
+            options=capsule_options,
             state=capsule.stream_state(),
         )
 
-        print(f"Inference results:\n\t{results}")
-        print("Press Space to Continue")
-        render_detections(
-            image=image, results=results, color=(255, 100, 100), thickness=2
-        )
+        print(f"Inference results: {detection_node}")
+
+        capsule_results.append(detection_node)
+
+        if not detection_required:
+            render_detections(
+                image=image, results=results, color=(255, 100, 100), thickness=2
+            )
+
         cv2.imshow("Results", image)
-        cv2.waitKey(0)
+        cv2.waitKey(1)
+
+    return capsule_results
 
 
 def render_detections(
@@ -65,49 +88,54 @@ def render_detections(
 
 def validate_capsule(capsule: BaseCapsule) -> Optional[NoReturn]:
     """Returns errors if the capsule is not compatible with this script"""
+    detection_required = False
     if capsule.input_type.size is not NodeDescription.Size.NONE:
         print(
-            "This capsule requires detections as input, which this script does not "
-            "currently support. Please try a capusle that has an input_type=None."
+            "This capsule requires detections as input, the whole input image is"
+            " to be provided to the capsule as an input of a detection."
         )
-        exit(-1)
+        detection_required = True
+    return detection_required
 
 
-def _parse_args() -> Tuple[Path, Optional[Path], List[Path]]:
-    parser = ArgumentParser(
-        description="A helpful tool for running inference on a capsule."
-    )
+def capsule_infer_add_args(parser) -> Tuple[Path, Optional[Path], List[Path]]:
     parser.add_argument(
-        "-c",
         "--capsule",
         required=True,
         type=Path,
         help="The path to either an unpackaged or packaged capsule",
     )
     parser.add_argument(
-        "-i",
         "--images",
         type=Path,
         nargs="+",
-        required=True,
         help="Paths to one or more images to run inference on. If the path is a "
         "directory, then *.png or *.jpg images in the directory will be used.",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--detection",
+        help="A detection name is required for classifier test.",
+    )
+    return
 
+
+def parse_images(images_input):
     images = []
-    for path in args.images:
+    for path in images_input:
         if path.is_dir():
             images += list(path.glob("*.png"))
             images += list(path.glob("*.jpg"))
             images += list(path.glob("*.jpeg"))
 
             if len(images) == 0:
-                print(f"No images were found in the directory {args.images}!")
+                print(f"No images were found in the directory {images_input}!")
                 exit(-1)
         else:
             images.append(path)
+    return images
 
+
+def parse_capsule_info(args):
     if args.capsule.is_dir():
         capsule_name = args.capsule.with_suffix(CAPSULE_EXTENSION).name
         unpackaged_capsule_path = args.capsule
@@ -116,8 +144,23 @@ def _parse_args() -> Tuple[Path, Optional[Path], List[Path]]:
     else:
         unpackaged_capsule_path = None
         packaged_capsule_path = args.capsule
+    return packaged_capsule_path, unpackaged_capsule_path, capsule_name
 
-    return packaged_capsule_path, unpackaged_capsule_path, images
+
+def main():
+    parser = ArgumentParser(
+        description="A helpful tool for running inference on a capsule."
+    )
+
+    capsule_infer_add_args(parser)
+
+    args = parser.parse_args()
+
+    image_paths = parse_images(args.images)
+
+    packaged_capsule_path, unpackaged_capsule_path, capsule_name = parse_capsule_info(args)
+
+    results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, 0, 0)
 
 
 if __name__ == "__main__":
