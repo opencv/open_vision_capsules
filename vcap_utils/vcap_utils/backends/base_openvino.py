@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 from concurrent.futures import Future
 
 import numpy as np
+# from tensorflow.python.keras.applications.mobilenet_v2 import preprocess_input
 
 from vcap import Resize, BaseBackend, DetectionNode
 
@@ -187,6 +188,9 @@ class BaseOpenVINOBackend(BaseBackend):
 
         # Change data layout from HWC to CHW
         in_frame = np.transpose(resize.frame.copy(), (2, 0, 1))
+        # This breaks capsule backward compatibility?
+        # in_frame = np.expand_dims(in_frame, axis=0)
+        # in_frame = preprocess_input(in_frame)
 
         return {input_blob_name: in_frame}, resize
 
