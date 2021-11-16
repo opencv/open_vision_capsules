@@ -37,13 +37,15 @@ def output_report(output_filename, cmdline, detection_results, data_detection, d
             confidence_false = []
             confidence_unknown = []
             for result in results:
-                prediction = result.attributes[data_attribute]
                 confidence = result.extra_data[confidence_key]
-                if result.attributes[data_attribute] == 'true':
+                if 'true' in result.attributes[data_attribute]:
+                    true_attribute_label = result.attributes[data_attribute]
                     confidence_true.append(confidence)
-                elif result.attributes[data_attribute] == 'false':
+                elif 'false' in result.attributes[data_attribute]:
+                    false_attribute_label = result.attributes[data_attribute]
                     confidence_false.append(confidence)
                 else: # 'unknown'
+                    unknown_attribute_label = result.attributes[data_attribute]
                     confidence_unknown.append(confidence)
 
             true_in_all = len(confidence_true) / (len(results))
@@ -53,9 +55,9 @@ def output_report(output_filename, cmdline, detection_results, data_detection, d
             fig, (plt_true, plt_false, plt_unknown) = plt.subplots(3)
             fig.suptitle(f'detection: {data_detection}, attribute: {data_attribute}, data_truth: {data_truth}')
 
-            true_report, true_max_bin = create_report(plt_true, confidence_true, 'prediction(s) as true', true_in_all, data_truth=='true')
-            false_report, false_max_bin = create_report(plt_false, confidence_false, 'prediction(s) as false', false_in_all, data_truth=='false')
-            unknown_report, unknown_max_bin = create_report(plt_unknown, confidence_unknown, 'prediction(s) as unknown', unknown_in_all, False)
+            true_report, true_max_bin = create_report(plt_true, confidence_true, true_attribute_label, true_in_all, data_truth=='true')
+            false_report, false_max_bin = create_report(plt_false, confidence_false, false_attribute_label, false_in_all, data_truth=='false')
+            unknown_report, unknown_max_bin = create_report(plt_unknown, confidence_unknown, unknown_attribute_label, unknown_in_all, False)
 
             threshold_text = f'true_threshold: {true_threshold:.2%}, false_threshold: {false_threshold:.2%}'
             if data_truth=='true':
