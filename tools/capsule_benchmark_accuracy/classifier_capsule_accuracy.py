@@ -36,6 +36,9 @@ def output_report(output_filename, cmdline, detection_results, data_detection, d
             confidence_true = []
             confidence_false = []
             confidence_unknown = []
+            true_attribute_label = ""
+            false_attribute_label = ""
+            unknown_attribute_label = ""
             for result in results:
                 confidence = result.extra_data[confidence_key]
                 if 'true' in result.attributes[data_attribute]:
