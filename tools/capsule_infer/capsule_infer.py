@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 from pathlib import Path
+from time import time
 from typing import List, NoReturn, Optional, Tuple
 
 import cv2
@@ -22,7 +23,11 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
 
     detection_required = validate_capsule(capsule)
 
-    capsule_options = {'true threshold': true_threshold, 'false threshold': false_threshold}
+    classes = capsule.output_type.detections
+    print(f"Available detection class_names are {classes}")
+
+    # capsule_options = {'true threshold': true_threshold, 'false threshold': false_threshold}
+    capsule_options = {'threshold': 0.5, 'nms_iou_thresh': 0.4}
     capsule_results = []
 
     for image_path in image_paths:
@@ -43,36 +48,56 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
         else:
             detection_node = None
 
+        start_time = time()
         results = capsule.process_frame(
             frame=image,
             detection_node=detection_node,
             options=capsule_options,
             state=capsule.stream_state(),
         )
+        proc_time_ms = (time() - start_time) * 1000
 
-        print(f"Inference results: {detection_node}")
+        print(f"Inference time {proc_time_ms:0.4f}ms, results: {results}")
 
         capsule_results.append(detection_node)
 
         if not detection_required:
             render_detections(
-                image=image, results=results, color=(255, 100, 100), thickness=2
+                classes, image=image, results=results, color=(30, 255, 255), thickness=2
             )
 
         cv2.imshow("Results", image)
-        cv2.waitKey(1)
+        cv2.waitKey()
 
     return capsule_results
 
 
-def render_detections(
+def render_detections( classes,
     image: np.ndarray, results: List[DetectionNode], color, thickness
 ):
     def line(from_pt, to_pt):
+        line_color = (30, 255, 255)
         from_pt, to_pt = tuple((int(x), int(y)) for x, y in (from_pt, to_pt))
         cv2.line(image, from_pt, to_pt, color, thickness=thickness, lineType=cv2.LINE_8)
 
+    def text(coords, label):
+        x, y = coords[0]
+        pt = (x, y)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.8
+        font_thickness = 2
+        text_color = (255, 100, 100)
+        text_color_bg = color # (30, 255, 255)
+        text_size, _ = cv2.getTextSize(label, font, font_scale, font_thickness)
+        text_w, text_h = text_size
+        cv2.rectangle(image, pt, (x + text_w, y - text_h), text_color_bg, -1)
+        cv2.putText(image, label, pt, font, font_scale, text_color, font_thickness)
+
     for detection in results:
+        class_name = detection.class_name
+        class_id = classes.index(class_name)
+
+        color = (int(min(class_id * 12.5, 255)), min(class_id * 7, 255), min(class_id * 5, 255))
         if len(detection.coords) > 2:
             for from_pt, to_pt in zip(detection.coords[0:-1], detection.coords[1:]):
                 line(from_pt, to_pt)
@@ -84,6 +109,13 @@ def render_detections(
             line(detection.coords[0], detection.coords[1])
         else:
             print(f"Unsupported number of coordinates: {detection.coords}")
+
+        if 'detection_confidence' in detection.extra_data:
+            detection_confidence = detection.extra_data['detection_confidence']
+        else:
+            detection_confidence = 0
+        label = f'{class_name}: {detection_confidence:.04f}'
+        text(detection.coords, label)
 
 
 def validate_capsule(capsule: BaseCapsule) -> Optional[NoReturn]:
@@ -142,6 +174,7 @@ def parse_capsule_info(args):
         packaged_capsule_path = unpackaged_capsule_path.parent / capsule_name
         package_capsule(args.capsule, packaged_capsule_path)
     else:
+        capsule_name = None
         unpackaged_capsule_path = None
         packaged_capsule_path = args.capsule
     return packaged_capsule_path, unpackaged_capsule_path, capsule_name
@@ -161,6 +194,8 @@ def main():
     packaged_capsule_path, unpackaged_capsule_path, capsule_name = parse_capsule_info(args)
 
     results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, 0, 0)
+
+    print(results)
 
 
 if __name__ == "__main__":
