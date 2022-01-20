@@ -1,8 +1,10 @@
+from argparse import ArgumentParser
+
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
-from .crypto_utils import encrypt
+from vcap.loading.crypto_utils import encrypt
 
 CAPSULE_EXTENSION = ".cap"
 """The file extension that capsule files use."""
@@ -50,3 +52,22 @@ def package_capsule(unpackaged_dir: Path, output_file: Path, key=None):
             output.write(saved_zip_bytes.read())
         else:
             encrypt(key, saved_zip_bytes.read(), output)
+
+
+def packaging():
+    parser = ArgumentParser()
+    parser.add_argument("--capsule-dir", type=Path, required=True)
+    parser.add_argument("--capsule-key", type=str, required=False)
+    args = parser.parse_args()
+
+    for path in args.capsule_dir.iterdir():
+        if path.is_dir():
+            package_capsule(
+                unpackaged_dir=path,
+                output_file=path.with_suffix(CAPSULE_EXTENSION),
+                key=args.capsule_key,
+            )
+
+
+if __name__ == "__main__":
+    packaging()
