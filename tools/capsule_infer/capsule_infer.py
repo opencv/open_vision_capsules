@@ -15,10 +15,10 @@ from vcap import (
 )
 
 
-def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, detection_name, true_threshold, false_threshold):
+def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, detection_name, true_threshold, false_threshold, capsule_key):
 
     capsule = load_capsule(
-        path=packaged_capsule_path, source_path=unpackaged_capsule_path
+        path=packaged_capsule_path, source_path=unpackaged_capsule_path, key=capsule_key
     )
 
     detection_required = validate_capsule(capsule)
@@ -148,7 +148,11 @@ def capsule_infer_add_args(parser) -> Tuple[Path, Optional[Path], List[Path]]:
         "--detection",
         help="A detection name is required for classifier test.",
     )
-    return
+    parser.add_argument(
+        "--capsule-key",
+        type=str,
+        required=False
+    )
 
 
 def parse_images(images_input):
@@ -193,7 +197,7 @@ def main():
 
     packaged_capsule_path, unpackaged_capsule_path, capsule_name = parse_capsule_info(args)
 
-    results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, 0, 0)
+    results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, 0, 0, args.capsule_key)
 
     print(results)
 
