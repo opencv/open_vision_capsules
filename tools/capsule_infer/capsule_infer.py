@@ -197,6 +197,9 @@ def main():
 
     packaged_capsule_path, unpackaged_capsule_path, capsule_name = parse_capsule_info(args)
 
+    if args.capsule_key == 'brainframe':
+        args.capsule_key = None
+
     results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, 0, 0, args.capsule_key)
 
     print(results)
