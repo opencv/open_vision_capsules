@@ -27,50 +27,60 @@ class StoreDictKeyPair(argparse.Action):
          setattr(namespace, self.dest, my_dict)
 
 
-def output_report(output_filename, cmdline, detection_results, data_detection, data_attribute, data_truth, true_threshold, false_threshold):
-    # May need to do wild match so it does not depend on the data_attribute
-    confidence_key = f'{data_attribute}_confidence'
+def output_report(output_filename, cmdline, detection_results, data_detection, attribute_name, data_truth, true_threshold, false_threshold):
     if detection_results:
         if detection_results[0].attributes and detection_results[0].extra_data:
-            results = sorted(detection_results, key=lambda d: d.extra_data[confidence_key])
+            confidence_key = attribute_name + '_confidence'
+            # detections = sorted(detection_results, key=lambda d: d.extra_data[confidence_key])
+            detections = detection_results
             confidence_true = []
             confidence_false = []
             confidence_unknown = []
             true_attribute_label = ""
             false_attribute_label = ""
             unknown_attribute_label = ""
-            for result in results:
-                confidence = result.extra_data[confidence_key]
-                if 'true' in result.attributes[data_attribute]:
-                    true_attribute_label = result.attributes[data_attribute]
-                    confidence_true.append(confidence)
-                elif 'false' in result.attributes[data_attribute]:
-                    false_attribute_label = result.attributes[data_attribute]
-                    confidence_false.append(confidence)
-                else: # 'unknown'
-                    unknown_attribute_label = result.attributes[data_attribute]
+            for det in detections:
+                if confidence_key in det.extra_data:
+                    confidence = det.extra_data[confidence_key]
+                else:
+                    confidence = det.extra_data['confidence']
+                if attribute_name in det.attributes:
+                    if 'true' in det.attributes[attribute_name]:
+                        true_attribute_label = det.attributes[attribute_name]
+                        confidence_true.append(confidence)
+                    elif attribute_name in det.attributes and 'false' in det.attributes[attribute_name]:
+                        false_attribute_label = det.attributes[attribute_name]
+                        confidence_false.append(confidence)
+                    else: # 'unknown'
+                        unknown_attribute_label = det.attributes[attribute_name]
+                        confidence_unknown.append(confidence)
+                elif 'unknown' in det.attributes:
+                    unknown_attribute_label = det.attributes['unknown']
                     confidence_unknown.append(confidence)
 
-            true_in_all = len(confidence_true) / (len(results))
-            false_in_all = len(confidence_false) / (len(results))
-            unknown_in_all = len(confidence_unknown)/len(results)
+            true_in_all = len(confidence_true) / (len(detections))
+            false_in_all = len(confidence_false) / (len(detections))
+            unknown_in_all = len(confidence_unknown)/len(detections)
 
             fig, (plt_true, plt_false, plt_unknown) = plt.subplots(3)
-            fig.suptitle(f'detection: {data_detection}, attribute: {data_attribute}, data_truth: {data_truth}')
-
-            true_report, true_max_bin = create_report(plt_true, confidence_true, true_attribute_label, true_in_all, data_truth=='true')
-            false_report, false_max_bin = create_report(plt_false, confidence_false, false_attribute_label, false_in_all, data_truth=='false')
-            unknown_report, unknown_max_bin = create_report(plt_unknown, confidence_unknown, unknown_attribute_label, unknown_in_all, False)
-
             threshold_text = f'true_threshold: {true_threshold:.2%}, false_threshold: {false_threshold:.2%}'
-            if data_truth=='true':
-                correct_in_none_unknown = len(confidence_true) / (len(confidence_true) + len(confidence_false))
-                plt_true.text(0, true_max_bin * 0.8, f'Counts in none unknown: {correct_in_none_unknown:.2%}', color='green')
-                plt_true.text(0, true_max_bin * 0.6, threshold_text, color='green')
-            else:
-                correct_in_none_unknown = len(confidence_false) / (len(confidence_true) + len(confidence_false))
-                plt_false.text(0, false_max_bin * 0.8, f'Counts in none unknown: {correct_in_none_unknown:.2%}', color='green')
-                plt_false.text(0, false_max_bin * 0.6, threshold_text, color='green')
+            fig.suptitle(f'detection: {data_detection}, attribute: {attribute_name}, data_truth: {data_truth}\n' + threshold_text)
+
+            correct_in_none_unknown = 0
+            len_none_unknown = len(confidence_true) + len(confidence_false)
+            if len_none_unknown != 0:
+                if data_truth == 'true':
+                    correct_in_none_unknown = len(confidence_true) / len_none_unknown
+                elif data_truth == 'false':
+                    correct_in_none_unknown = len(confidence_false) / len_none_unknown
+
+            true_report_title = f'True: {true_attribute_label}: {true_in_all:.2%}, in none unknown: {correct_in_none_unknown:.2%}'
+            false_report_title = f'False: {false_attribute_label}: {false_in_all:.2%}, in none unknown: {correct_in_none_unknown:.2%}'
+            unknown_report_title = f'Unknown: {unknown_attribute_label}: {unknown_in_all:.2%}'
+
+            true_report, true_max_bin = create_report(plt_true, confidence_true, true_report_title, data_truth=='true')
+            false_report, false_max_bin = create_report(plt_false, confidence_false, false_report_title, data_truth=='false')
+            unknown_report, unknown_max_bin = create_report(plt_unknown, confidence_unknown, unknown_report_title, False)
 
             output_filename = output_filename + "_" + data_truth
             with open(output_filename + '.txt', 'w') as f:
@@ -82,12 +92,14 @@ def output_report(output_filename, cmdline, detection_results, data_detection, d
             fig.savefig(output_filename + '.png')
 
 
-def create_report(plt, confidence, prediction_label, percentage, correct_as_green):
+def create_report(plt, confidence, title_text, correct_as_green):
     if correct_as_green:
         color = 'green'
     else:
         color = 'blue'
-    title = f'{len(confidence)} {prediction_label}: {percentage:.2%}'
+    title = f'{len(confidence)} {title_text}'
+    if len(confidence) == 0:
+        plt.set_ylim([0, 1])
 
     bins = [0.00, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00]
     y, x, _ = plt.hist(confidence, bins=bins, color=color)
@@ -104,7 +116,7 @@ def create_report(plt, confidence, prediction_label, percentage, correct_as_gree
     return report_text, y.max()
 
 
-def add_args(parser) -> Tuple[Path, Optional[Path], List[Path]]:
+def add_args(parser):
 
     capsule_infer_add_args(parser)
 
@@ -134,11 +146,9 @@ def add_args(parser) -> Tuple[Path, Optional[Path], List[Path]]:
         "detection=person attribute=helmet true_threshold=0.25 false_threshold=0.25"
     )
 
-    return
-
 
 def read_cmdline():
-    cmdline = '';
+    cmdline = ''
 
     for arg in sys.argv[1:]:
         if ' ' in arg:
@@ -160,14 +170,14 @@ def main():
 
     cmdline = read_cmdline()
 
-    data_detection, data_attribute = 'person', 'helmet',
+    data_detection, attribute_name = 'person', 'helmet'
     true_threshold, false_threshold = 0.0, 0.0
     if args.data_dict:
         if 'detection' in args.data_dict:
             data_detection = args.data_dict['detection']
 
         if 'attribute' in args.data_dict:
-            data_attribute = args.data_dict['attribute']
+            attribute_name = args.data_dict['attribute']
 
         if 'true_threshold' in args.data_dict:
             true_threshold = float(args.data_dict['true_threshold'])
@@ -177,34 +187,29 @@ def main():
 
     packaged_capsule_path, unpackaged_capsule_path, capsule_name = parse_capsule_info(args)
 
-    output_filename_prefix = capsule_name + "_" + data_detection + "_" + data_attribute\
+    output_filename_prefix = capsule_name + "_" + data_detection + "_" + attribute_name\
                            + "_T" + str(true_threshold) + "_F" + str(false_threshold)
     if args.images:
         images = parse_images(args.images)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection,
-                                              true_threshold, false_threshold)
-        output_report(output_filename_prefix, cmdline, detection_results, data_detection, data_attribute, "", true_threshold, false_threshold)
+                                              images, data_detection)
+        output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "", true_threshold, false_threshold)
 
     if args.images_true:
         images = parse_images(args.images_true)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection,
-                                              true_threshold, false_threshold)
-        output_report(output_filename_prefix, cmdline, detection_results, data_detection, data_attribute, "true", true_threshold, false_threshold)
+                                              images, data_detection)
+        output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "true", true_threshold, false_threshold)
 
     plt.waitforbuttonpress(1)
 
     if args.images_false:
         images = parse_images(args.images_false)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection,
-                                              true_threshold, false_threshold)
-        output_report(output_filename_prefix, cmdline, detection_results, data_detection, data_attribute, "false", true_threshold, false_threshold)
+                                              images, data_detection)
+        output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "false", true_threshold, false_threshold)
 
     plt.waitforbuttonpress(1)
-    print("Press Enter to EXIT")
-    input()
 
     return
 

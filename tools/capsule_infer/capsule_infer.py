@@ -15,7 +15,7 @@ from vcap import (
 )
 
 
-def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, detection_name, true_threshold, false_threshold, capsule_key):
+def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, detection_name, capsule_key=None):
 
     capsule = load_capsule(
         path=packaged_capsule_path, source_path=unpackaged_capsule_path, key=capsule_key
@@ -26,8 +26,7 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
     classes = capsule.output_type.detections
     print(f"Available detection class_names are {classes}")
 
-    # capsule_options = {'true threshold': true_threshold, 'false threshold': false_threshold}
-    capsule_options = {'threshold': 0.5, 'nms_iou_thresh': 0.4}
+    capsule_options = capsule.options
     capsule_results = []
 
     for image_path in image_paths:
@@ -41,8 +40,8 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
             detections = DetectionNode(
                 name=detection_name,
                 coords=points,
-                attributes=[],
-                extra_data=[]
+                attributes={},
+                extra_data={}
             )
             detection_node = detections
         else:
@@ -57,7 +56,16 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
         )
         proc_time_ms = (time() - start_time) * 1000
 
-        print(f"Inference time {proc_time_ms:0.4f}ms, results: {results}")
+        valid_description = capsule.output_type.describes(detection_node)
+        print(f"Inference time {proc_time_ms:0.4f}ms, results: {detection_node}")
+
+        if not valid_description:
+            assert False, (
+                f"Ignoring node from {capsule.name} because it does not match the "
+                f"capsules output type description. "
+                f"\nNode: {detection_node} "
+                f"\nDescription: {capsule.output_type}"
+            )
 
         capsule_results.append(detection_node)
 
@@ -130,7 +138,7 @@ def validate_capsule(capsule: BaseCapsule) -> Optional[NoReturn]:
     return detection_required
 
 
-def capsule_infer_add_args(parser) -> Tuple[Path, Optional[Path], List[Path]]:
+def capsule_infer_add_args(parser):
     parser.add_argument(
         "--capsule",
         required=True,
@@ -200,7 +208,7 @@ def main():
     if args.capsule_key == 'brainframe':
         args.capsule_key = None
 
-    results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, 0, 0, args.capsule_key)
+    results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, args.capsule_key)
 
     print(results)
 
