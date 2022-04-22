@@ -56,18 +56,19 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
         )
         proc_time_ms = (time() - start_time) * 1000
 
-        valid_description = capsule.output_type.describes(detection_node)
-        print(f"Inference time {proc_time_ms:0.4f}ms, results: {detection_node}")
+        if detection_node:
+            valid_description = capsule.output_type.describes(detection_node)
+            print(f"Inference time {proc_time_ms:0.4f}ms, results: {detection_node}")
 
-        if not valid_description:
-            assert False, (
-                f"Ignoring node from {capsule.name} because it does not match the "
-                f"capsules output type description. "
-                f"\nNode: {detection_node} "
-                f"\nDescription: {capsule.output_type}"
-            )
+            if not valid_description:
+                assert False, (
+                    f"Ignoring node from {capsule.name} because it does not match the "
+                    f"capsules output type description. "
+                    f"\nNode: {detection_node} "
+                    f"\nDescription: {capsule.output_type}"
+                )
 
-        capsule_results.append(detection_node)
+            capsule_results.append(detection_node)
 
         if not detection_required:
             render_detections(
