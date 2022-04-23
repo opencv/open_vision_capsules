@@ -233,6 +233,20 @@ def parse_capsule_info(args):
     return packaged_capsule_path, unpackaged_capsule_path, capsule_name
 
 
+def capsule_options_and_key(args):
+    if args.capsule_key == 'brainframe':
+        capsule_key = None
+    else:
+        capsule_key = args.capsule_key
+
+    if args.options is not None:
+        input_options = read_options(args.options)
+    else:
+        input_options = None
+
+    return input_options, capsule_key
+
+
 def main():
     parser = ArgumentParser(
         description="A helpful tool for running inference on a capsule."
@@ -246,15 +260,9 @@ def main():
 
     packaged_capsule_path, unpackaged_capsule_path, capsule_name = parse_capsule_info(args)
 
-    if args.capsule_key == 'brainframe':
-        args.capsule_key = None
+    input_options, capsule_key = capsule_options_and_key(args)
 
-    if args.options is not None:
-        input_options = read_options(args.options)
-    else:
-        input_options = None
-
-    results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, input_options, args.capsule_key)
+    results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, input_options, capsule_key)
 
     print(results)
 
