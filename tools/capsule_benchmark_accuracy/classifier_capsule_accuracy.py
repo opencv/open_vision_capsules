@@ -1,13 +1,9 @@
 import argparse
 import sys
 from argparse import ArgumentParser
-from enum import Enum
 from pathlib import Path
-from typing import List, NoReturn, Optional, Tuple
 import matplotlib.pyplot as plt
 
-import cv2
-import numpy as np
 import pandas as pd
 
 from capsule_infer import capsule_inference, parse_images, capsule_infer_add_args, \

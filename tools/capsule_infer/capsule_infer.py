@@ -3,7 +3,7 @@ import os
 from argparse import ArgumentParser
 from pathlib import Path
 from time import time
-from typing import List, NoReturn, Optional, Tuple
+from typing import List, NoReturn, Optional
 
 import cv2
 import numpy as np
