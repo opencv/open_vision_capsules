@@ -144,6 +144,8 @@ def render_detections( classes,
 
         if 'detection_confidence' in detection.extra_data:
             detection_confidence = detection.extra_data['detection_confidence']
+        elif 'confidence' in detection.extra_data:
+            detection_confidence = detection.extra_data['confidence']
         else:
             detection_confidence = 0
         label = f'{class_name}: {detection_confidence:.04f}'

@@ -244,7 +244,7 @@ class BaseOpenVINOBackend(BaseBackend):
             res = DetectionNode(
                 name=label_map[class_id],
                 coords=coords,
-                extra_data={"detection_confidence": confidence})
+                extra_data={"confidence": confidence})
             nodes.append(res)
 
         # Convert the coordinate space of the detections from the
