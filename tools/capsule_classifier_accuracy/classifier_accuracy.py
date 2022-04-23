@@ -9,7 +9,7 @@ import pandas as pd
 from capsule_infer import capsule_inference, parse_images, capsule_infer_add_args, \
     parse_capsule_info
 
-from tools.capsule_infer.capsule_infer import read_options, capsule_options_and_key
+from capsule_infer import read_options, capsule_options_and_key
 
 
 class StoreDictKeyPair(argparse.Action):
