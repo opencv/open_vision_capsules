@@ -164,7 +164,9 @@ def capsule_infer_add_args(parser):
     parser.add_argument(
         "--capsule-key",
         type=str,
-        required=False
+        required=False,
+        help="Capsule key to load an encrypted capsule. Use 'brainframe' as the key "
+        "to load capsules signed for BrainFrame"
     )
 
 
