@@ -1,3 +1,5 @@
+import json
+import os
 from argparse import ArgumentParser
 from pathlib import Path
 from time import time
@@ -15,7 +17,22 @@ from vcap import (
 )
 
 
-def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, detection_name, capsule_key=None):
+def update_options(default_options, input_options):
+    capsule_options = {}
+    for option_name, val in default_options.items():
+        if input_options is not None and option_name in input_options:
+            capsule_options[option_name] = input_options[option_name]
+        else:
+            capsule_options[option_name] = val.default
+
+    f = open('options.json', "w")
+    json.dump(capsule_options, f, indent=4)
+    f.close()
+
+    return capsule_options
+
+
+def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, detection_name, input_options=None, capsule_key=None):
 
     capsule = load_capsule(
         path=packaged_capsule_path, source_path=unpackaged_capsule_path, key=capsule_key
@@ -26,10 +43,8 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
     classes = capsule.output_type.detections
     print(f"Available detection class_names are {classes}")
 
-    capsule_options = {}
-    for option_name, val in capsule.options.items():
-        capsule_options[option_name] = val.default
-    print(f'Capsule options: {capsule_options}')
+    capsule_options = update_options(capsule.options, input_options)
+    print(f'Capsule options are {capsule_options}')
 
     capsule_results = []
 
@@ -151,6 +166,12 @@ def capsule_infer_add_args(parser):
         help="The path to either an unpackaged or packaged capsule",
     )
     parser.add_argument(
+        "--options",
+        type=Path,
+        default="options.json",
+        help="File to store the capsule options",
+    )
+    parser.add_argument(
         "--images",
         type=Path,
         nargs="+",
@@ -168,6 +189,15 @@ def capsule_infer_add_args(parser):
         help="Capsule key to load an encrypted capsule. Use 'brainframe' as the key "
         "to load capsules signed for BrainFrame"
     )
+
+
+def read_options(option_file):
+    if os.path.isfile(option_file):
+        with open(option_file) as file:
+            options = json.load(file)
+    else:
+        options = None
+    return options
 
 
 def parse_images(images_input):
@@ -215,7 +245,12 @@ def main():
     if args.capsule_key == 'brainframe':
         args.capsule_key = None
 
-    results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, args.capsule_key)
+    if args.options is not None:
+        input_options = read_options(args.options)
+    else:
+        input_options = None
+
+    results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, input_options, args.capsule_key)
 
     print(results)
 

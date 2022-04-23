@@ -13,6 +13,8 @@ import pandas as pd
 from capsule_infer import capsule_inference, parse_images, capsule_infer_add_args, \
     parse_capsule_info
 
+from tools.capsule_infer.capsule_infer import read_options
+
 
 class StoreDictKeyPair(argparse.Action):
      def __init__(self, option_strings, dest, nargs=None, **kwargs):
@@ -193,16 +195,21 @@ def main():
     if args.capsule_key == 'brainframe':
         args.capsule_key = None
 
+    if args.options is not None:
+        options = read_options(args.options)
+    else:
+        options = None
+
     if args.images:
         images = parse_images(args.images)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection, args.capsule_key)
+                                              images, data_detection, options, args.capsule_key)
         output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "", true_threshold, false_threshold)
 
     if args.images_true:
         images = parse_images(args.images_true)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection, args.capsule_key)
+                                              images, data_detection, options, args.capsule_key)
         output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "true", true_threshold, false_threshold)
 
     plt.waitforbuttonpress(1)
@@ -210,7 +217,7 @@ def main():
     if args.images_false:
         images = parse_images(args.images_false)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection, args.capsule_key)
+                                              images, data_detection, options, args.capsule_key)
         output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "false", true_threshold, false_threshold)
 
     plt.waitforbuttonpress(1)
