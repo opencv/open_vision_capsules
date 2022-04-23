@@ -34,9 +34,13 @@ def update_options(default_options, input_options):
 
 def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, detection_name, input_options=None, capsule_key=None):
 
+    start_time = time()
     capsule = load_capsule(
         path=packaged_capsule_path, source_path=unpackaged_capsule_path, key=capsule_key
     )
+    load_time_ms = (time() - start_time) * 1000
+    capsule_file_size = os.path.getsize(packaged_capsule_path)
+    print(f"Capsule file {capsule_file_size} bytes, load time {load_time_ms:0.4f}ms")
 
     detection_required = validate_capsule(capsule)
 
@@ -74,7 +78,7 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
             state=capsule.stream_state(),
         )
         proc_time_ms = (time() - start_time) * 1000
-        print(f"Capsule process time {proc_time_ms:0.4f}ms, results: {detection_node}")
+        print(f"Capsule process frame time {proc_time_ms:0.4f}ms, results: {detection_node}")
 
         if detection_node:
             valid_description = capsule.output_type.describes(detection_node)
