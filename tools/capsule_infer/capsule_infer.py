@@ -26,7 +26,11 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
     classes = capsule.output_type.detections
     print(f"Available detection class_names are {classes}")
 
-    capsule_options = capsule.options
+    capsule_options = {}
+    for option_name, val in capsule.options.items():
+        capsule_options[option_name] = val.default
+    print(f'Capsule options: {capsule_options}')
+
     capsule_results = []
 
     for image_path in image_paths:
