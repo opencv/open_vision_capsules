@@ -61,8 +61,13 @@ def output_report(output_filename, cmdline, detection_results, data_detection, a
             unknown_in_all = len(confidence_unknown)/len(detections)
 
             fig, (plt_true, plt_false, plt_unknown) = plt.subplots(3)
+            params = {'axes.labelsize': 'medium',
+                      'axes.titlesize': 'medium',
+                      'figure.titlesize': 'medium'}
+            plt.rcParams.update(params)
             threshold_text = f'true_threshold: {true_threshold:.2%}, false_threshold: {false_threshold:.2%}'
             fig.suptitle(f'detection: {data_detection}, attribute: {attribute_name}, data_truth: {data_truth}\n' + threshold_text)
+            fig.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=None, hspace=None)
 
             correct_in_none_unknown = 0
             len_none_unknown = len(confidence_true) + len(confidence_false)
@@ -193,13 +198,13 @@ def main():
     if args.images:
         images = parse_images(args.images)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection, input_options, capsule_key)
+                                              images, data_detection, input_options, capsule_key, wait=1)
         output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "", true_threshold, false_threshold)
 
     if args.images_true:
         images = parse_images(args.images_true)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection, input_options, capsule_key)
+                                              images, data_detection, input_options, capsule_key, wait=1)
         output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "true", true_threshold, false_threshold)
 
     plt.waitforbuttonpress(1)
@@ -207,10 +212,10 @@ def main():
     if args.images_false:
         images = parse_images(args.images_false)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection, input_options, capsule_key)
+                                              images, data_detection, input_options, capsule_key, wait=1)
         output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "false", true_threshold, false_threshold)
 
-    plt.waitforbuttonpress(1)
+    plt.waitforbuttonpress(0)
 
     return
 
