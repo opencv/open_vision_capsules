@@ -249,7 +249,7 @@ def capsule_options_and_key(args):
     return input_options, capsule_key
 
 
-def main():
+def capsule_infer():
     parser = ArgumentParser(
         description="A helpful tool for running inference on a capsule."
     )
@@ -270,4 +270,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+   capsule_infer()

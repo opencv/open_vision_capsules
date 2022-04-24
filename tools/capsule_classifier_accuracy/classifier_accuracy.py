@@ -162,7 +162,7 @@ def read_cmdline():
     return cmdline
 
 
-def main():
+def classifier_accuracy():
     parser = ArgumentParser(
         description="A helpful tool for running inference and generate accuracy benchmarking report on a capsule."
     )
@@ -221,4 +221,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    classifier_accuracy()
