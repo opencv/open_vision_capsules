@@ -223,13 +223,12 @@ def parse_images(images_input):
 
 
 def parse_capsule_info(args):
+    capsule_name = args.capsule.with_suffix(CAPSULE_EXTENSION).name
     if args.capsule.is_dir():
-        capsule_name = args.capsule.with_suffix(CAPSULE_EXTENSION).name
         unpackaged_capsule_path = args.capsule
         packaged_capsule_path = unpackaged_capsule_path.parent / capsule_name
         package_capsule(args.capsule, packaged_capsule_path)
     else:
-        capsule_name = None
         unpackaged_capsule_path = None
         packaged_capsule_path = args.capsule
     return packaged_capsule_path, unpackaged_capsule_path, capsule_name
