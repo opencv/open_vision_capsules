@@ -207,7 +207,7 @@ def classifier_accuracy():
                                               images, data_detection, input_options, capsule_key, wait=1)
         output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "true", true_threshold, false_threshold)
 
-    plt.waitforbuttonpress(1)
+    # plt.waitforbuttonpress(1)
 
     if args.images_false:
         images = parse_images(args.images_false)
@@ -215,7 +215,7 @@ def classifier_accuracy():
                                               images, data_detection, input_options, capsule_key, wait=1)
         output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "false", true_threshold, false_threshold)
 
-    plt.waitforbuttonpress(0)
+    # plt.waitforbuttonpress(0)
 
     return
 

@@ -98,8 +98,8 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
                 classes, image=image, results=results, color=(30, 255, 255), thickness=2
             )
 
-        cv2.imshow("Results", image)
-        cv2.waitKey(wait)
+        # cv2.imshow("Results", image)
+        # cv2.waitKey(wait)
 
     return capsule_results
 
