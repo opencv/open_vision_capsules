@@ -33,10 +33,14 @@ def non_max_suppression(detection_nodes, max_bbox_overlap, scores=None):
 
     """
     boxes = np.array([d.bbox.xywh for d in detection_nodes])
-    if 'detection_confidence' in detection_nodes[0].extra_data:
-        detection_confidence = 'detection_confidence'
-    elif 'confidence' in detection_nodes[0].extra_data:
-        detection_confidence = 'confidence'
+
+    if len(detection_nodes) != 0:
+        if 'detection_confidence' in detection_nodes[0].extra_data:
+            detection_confidence = 'detection_confidence'
+        elif 'confidence' in detection_nodes[0].extra_data:
+            detection_confidence = 'confidence'
+        else:
+            detection_confidence = None
     else:
         detection_confidence = None
 
