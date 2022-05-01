@@ -125,6 +125,9 @@ def render_detections( classes,
         cv2.rectangle(image, pt, (x + text_w, y - text_h), text_color_bg, -1)
         cv2.putText(image, label, pt, font, font_scale, text_color, font_thickness)
 
+    if results is None:
+        return
+
     for detection in results:
         class_name = detection.class_name
         class_id = classes.index(class_name)
