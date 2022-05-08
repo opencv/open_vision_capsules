@@ -32,7 +32,7 @@ def update_options(default_options, input_options):
     return capsule_options
 
 
-def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, detection_name, input_options=None, capsule_key=None, wait=None):
+def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, detection_name, input_options=None, capsule_key=None, wait_time=None):
 
     start_time = time()
     capsule = load_capsule(
@@ -98,8 +98,9 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
                 classes, image=image, results=results, color=(30, 255, 255), thickness=2
             )
 
-        # cv2.imshow("Results", image)
-        # cv2.waitKey(wait)
+        if wait_time is not None:
+            cv2.imshow("Results", image)
+            cv2.waitKey(wait_time)
 
     return capsule_results
 
@@ -266,7 +267,7 @@ def capsule_infer():
 
     input_options, capsule_key = capsule_options_and_key(args)
 
-    results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, input_options, capsule_key)
+    results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, args.detection, input_options, capsule_key, 0)
 
     print(results)
 

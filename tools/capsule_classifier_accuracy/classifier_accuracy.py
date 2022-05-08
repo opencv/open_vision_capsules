@@ -148,6 +148,13 @@ def add_args(parser):
         help="Indicating the ground truth of the data input, defaults/examples are "
         "detection=person attribute=helmet true_threshold=0.25 false_threshold=0.25"
     )
+    parser.add_argument(
+        "--nowait",
+        dest="nowait",
+        action="store_true",
+        default=False,
+        help="Wait for keypress before exit. Default: %(default)s",
+    )
 
 
 def read_cmdline():
@@ -195,27 +202,35 @@ def classifier_accuracy():
 
     input_options, capsule_key = capsule_options_and_key(args)
 
+    if args.nowait is not True:
+        wait_time = 1
+    else:
+        wait_time = None
+
+
     if args.images:
         images = parse_images(args.images)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection, input_options, capsule_key, wait=1)
+                                              images, data_detection, input_options, capsule_key, wait_time=wait_time)
         output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "", true_threshold, false_threshold)
 
     if args.images_true:
         images = parse_images(args.images_true)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection, input_options, capsule_key, wait=1)
+                                              images, data_detection, input_options, capsule_key, wait_time=wait_time)
         output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "true", true_threshold, false_threshold)
 
-    # plt.waitforbuttonpress(1)
+    if args.nowait is not True:
+        plt.waitforbuttonpress(1)
 
     if args.images_false:
         images = parse_images(args.images_false)
         detection_results = capsule_inference(packaged_capsule_path, unpackaged_capsule_path,
-                                              images, data_detection, input_options, capsule_key, wait=1)
+                                              images, data_detection, input_options, capsule_key, wait_time=wait_time)
         output_report(output_filename_prefix, cmdline, detection_results, data_detection, attribute_name, "false", true_threshold, false_threshold)
 
-    # plt.waitforbuttonpress(0)
+    if args.nowait is not True:
+        plt.waitforbuttonpress(0)
 
     return
 

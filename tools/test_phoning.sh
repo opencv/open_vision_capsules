@@ -13,7 +13,7 @@ CAPSULE_INFER_PATH=$PROG_PREFIX/open_vision_capsules/tools/capsule_infer
 CMD="python3 $PROG_PREFIX/open_vision_capsules/tools/capsule_classifier_accuracy/classifier_accuracy.py"
 # CMD=capsule_classifier_accuracy_v0.3
 
-ARGS="--capsule $CAPSULE --images-true $DATA_PREFIX/$IMAGE_TRUE_DIR --images-false $DATA_PREFIX/$IMAGE_FALSE_DIR --data attribute=$ATTRIBUTE detection=$DETECTION"
+ARGS="--capsule $CAPSULE --images-true $DATA_PREFIX/$IMAGE_TRUE_DIR --images-false $DATA_PREFIX/$IMAGE_FALSE_DIR --data attribute=$ATTRIBUTE detection=$DETECTION --nowait"
 
 # Basic while loop
 i=0
