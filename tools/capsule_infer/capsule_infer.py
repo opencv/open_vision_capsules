@@ -56,6 +56,9 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
         print(f"Running inference on {image_path}")
         image = cv2.imread(str(image_path))
 
+        if image is None:
+            continue
+
         if detection_required:
             h_orig, w_orig = image.shape[:-1]
             points = [[0, 0], [w_orig, h_orig]]
