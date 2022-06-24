@@ -16,7 +16,7 @@ CMD="python3 $PROG_PREFIX/open_vision_capsules/tools/capsule_classifier_accuracy
 BASIC_ARGS="--capsule $CAPSULE --images-true $DATA_PREFIX/$IMAGE_TRUE_DIR --images-false $DATA_PREFIX/$IMAGE_FALSE_DIR --nowait --data attribute=$ATTRIBUTE detection=$DETECTION "
 
 # Basic while loop
-i=0
+i=3
 while [ $i -le 9 ]
 do
 	j=0
@@ -26,7 +26,7 @@ do
 		ARGS="$BASIC_ARGS true_threshold=0.$i false_threshold=0.$j"
 		echo $OPTIONS > options.json
 		echo $OPTIONS
-		echo $CMD $ARGS true_threshold="0.$i" false_threshold="0.$j"
+		echo $CMD $ARGS
 		export PYTHONPATH=$PYTHONPATH:$CAPSULE_INFER_PATH
 		$CMD $ARGS
 		((j++))

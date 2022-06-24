@@ -6,23 +6,26 @@ import matplotlib.pyplot as plt
 
 import pandas as pd
 
-from capsule_infer import capsule_inference, parse_images, capsule_infer_add_args, \
-    parse_capsule_info
-
-from capsule_infer import read_options, capsule_options_and_key
+# from tools.capsule_infer.capsule_infer import capsule_inference, parse_images, capsule_infer_add_args, \
+#     parse_capsule_info
+#
+# from tools.capsule_infer.capsule_infer import read_options, capsule_options_and_key
+from tools.capsule_infer.capsule_infer import capsule_inference, parse_images, capsule_infer_add_args, \
+    parse_capsule_info, read_options, capsule_options_and_key
 
 
 class StoreDictKeyPair(argparse.Action):
-     def __init__(self, option_strings, dest, nargs=None, **kwargs):
-         self._nargs = nargs
-         super(StoreDictKeyPair, self).__init__(option_strings, dest, nargs=nargs, **kwargs)
-     def __call__(self, parser, namespace, values, option_string=None):
-         my_dict = {}
-         print("values: {}".format(values))
-         for kv in values:
-             k,v = kv.split("=")
-             my_dict[k] = v
-         setattr(namespace, self.dest, my_dict)
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        self._nargs = nargs
+        super(StoreDictKeyPair, self).__init__(option_strings, dest, nargs=nargs, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        my_dict = {}
+        print("values: {}".format(values))
+        for kv in values:
+            k, v = kv.split("=")
+            my_dict[k] = v
+        setattr(namespace, self.dest, my_dict)
 
 
 def output_report(output_filename, cmdline, detection_results, data_detection, attribute_name, data_truth, true_threshold, false_threshold):
@@ -49,7 +52,7 @@ def output_report(output_filename, cmdline, detection_results, data_detection, a
                     elif attribute_name in det.attributes and 'false' in det.attributes[attribute_name]:
                         false_attribute_label = det.attributes[attribute_name]
                         confidence_false.append(confidence)
-                    else: # 'unknown'
+                    else:  # 'unknown'
                         unknown_attribute_label = det.attributes[attribute_name]
                         confidence_unknown.append(confidence)
                 elif 'unknown' in det.attributes:
@@ -58,7 +61,7 @@ def output_report(output_filename, cmdline, detection_results, data_detection, a
 
             true_in_all = len(confidence_true) / (len(detections))
             false_in_all = len(confidence_false) / (len(detections))
-            unknown_in_all = len(confidence_unknown)/len(detections)
+            unknown_in_all = len(confidence_unknown) / len(detections)
 
             fig, (plt_true, plt_false, plt_unknown) = plt.subplots(3)
             params = {'axes.labelsize': 'medium',
@@ -81,8 +84,8 @@ def output_report(output_filename, cmdline, detection_results, data_detection, a
             false_report_title = f'False: {false_attribute_label}: {false_in_all:.2%}, in none unknown: {correct_in_none_unknown:.2%}'
             unknown_report_title = f'Unknown: {unknown_attribute_label}: {unknown_in_all:.2%}'
 
-            true_report, true_max_bin = create_report(plt_true, confidence_true, true_report_title, data_truth=='true')
-            false_report, false_max_bin = create_report(plt_false, confidence_false, false_report_title, data_truth=='false')
+            true_report, true_max_bin = create_report(plt_true, confidence_true, true_report_title, data_truth == 'true')
+            false_report, false_max_bin = create_report(plt_false, confidence_false, false_report_title, data_truth == 'false')
             unknown_report, unknown_max_bin = create_report(plt_unknown, confidence_unknown, unknown_report_title, False)
 
             output_filename = output_filename + "_" + data_truth
@@ -120,7 +123,6 @@ def create_report(plt, confidence, title_text, correct_as_green):
 
 
 def add_args(parser):
-
     capsule_infer_add_args(parser)
 
     parser.add_argument(
@@ -128,16 +130,16 @@ def add_args(parser):
         type=Path,
         nargs="+",
         help="The test images classified as true. "
-        "Paths to one or more images to run inference on. If the path is a "
-        "directory, then *.png or *.jpg images in the directory will be used.",
+             "Paths to one or more images to run inference on. If the path is a "
+             "directory, then *.png or *.jpg images in the directory will be used.",
     )
     parser.add_argument(
         "--images-false",
         type=Path,
         nargs="+",
         help="The test images classified as false. "
-        "Paths to one or more images to run inference on. If the path is a "
-        "directory, then *.png or *.jpg images in the directory will be used.",
+             "Paths to one or more images to run inference on. If the path is a "
+             "directory, then *.png or *.jpg images in the directory will be used.",
     )
     parser.add_argument(
         "--data",
@@ -146,7 +148,7 @@ def add_args(parser):
         nargs="+",
         required=False,
         help="Indicating the ground truth of the data input, defaults/examples are "
-        "detection=person attribute=helmet true_threshold=0.25 false_threshold=0.25"
+             "detection=person attribute=helmet true_threshold=0.25 false_threshold=0.25"
     )
     parser.add_argument(
         "--nowait",
@@ -183,6 +185,8 @@ def classifier_accuracy():
     data_detection, attribute_name = 'person', 'helmet'
     true_threshold, false_threshold = 0.0, 0.0
     if args.data_dict:
+        print(f'++++++args.data_dict={args.data_dict}+++++++++')
+
         if 'detection' in args.data_dict:
             data_detection = args.data_dict['detection']
 
@@ -197,7 +201,7 @@ def classifier_accuracy():
 
     packaged_capsule_path, unpackaged_capsule_path, capsule_name = parse_capsule_info(args)
 
-    output_filename_prefix = f'{capsule_name}_{data_detection}_{attribute_name}'\
+    output_filename_prefix = f'{capsule_name}_{data_detection}_{attribute_name}' \
                              f'_T{true_threshold}_F{false_threshold}'
 
     input_options, capsule_key = capsule_options_and_key(args)
@@ -206,7 +210,6 @@ def classifier_accuracy():
         wait_time = 1
     else:
         wait_time = None
-
 
     if args.images:
         images = parse_images(args.images)
