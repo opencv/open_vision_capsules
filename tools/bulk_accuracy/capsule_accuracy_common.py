@@ -1,12 +1,15 @@
 import glob
+import numpy as np
 from enum import Enum
 from pathlib import Path
 from threading import Thread
-
 from cv2 import cv2
 import json
 
 from tools.bulk_accuracy.capsule_mgmt_basic import BasicCapsuleManagement
+
+EVERY_FRAME = 1
+SHOW_IMAGE_HEIGHT = 720
 
 
 class DetectionResult:
@@ -16,7 +19,10 @@ class DetectionResult:
         self.sample_path = sample_path
         self.offset_time = offset_time
         self.img_id = img_id
-        self.classified_type = classified_type
+        if "false" in classified_type:
+            self.classified_type = False
+        else:
+            self.classified_type = True
         self.confidence_value = confidence_value
 
     @staticmethod
@@ -38,7 +44,7 @@ class DetectionResult:
             objs[0],
             int(objs[1]),
             int(objs[2]),
-            objs[3] == "true",
+            objs[3],
             float(objs[4]),
         )
         return rst
@@ -64,6 +70,11 @@ class SampleType(Enum):
     image = "image"
 
 
+def get_first_item(tup4):
+    a, b, c, d = tup4
+    return c
+
+
 class AccuracyProcessor(Thread):
     def __init__(
             self,
@@ -74,6 +85,7 @@ class AccuracyProcessor(Thread):
             save_rendered_image=False,
             show_rendered_image=False,
             output_path="/tmp",
+            filter_class_names=None,
     ):
         super().__init__()
         self.detect_handler = DetectionHandler(self)
@@ -85,9 +97,10 @@ class AccuracyProcessor(Thread):
         self.save_rendered_image = save_rendered_image
         self.show_rendered_image = show_rendered_image
         self.output_path = output_path
+        self.filter_class_names = filter_class_names
         self.detected_detail_data = []
         self.offset_time = 0.0
-        self.img_id = 1
+        self.img_id = 0
         self.img = None
 
     def run(self) -> None:
@@ -109,6 +122,7 @@ class AccuracyProcessor(Thread):
         fps_interval = 1000 / fps
         while cap.isOpened():
             try:
+                self.img_id += 1
                 self.offset_time = int(cap.get(cv2.CAP_PROP_POS_MSEC))
                 # self.offset_time += fps_interval
                 print(f"img_id={self.img_id}, offset_time={self.offset_time}")
@@ -121,12 +135,13 @@ class AccuracyProcessor(Thread):
                 rst, self.img = cap.read()
                 if not rst or self.img is None:
                     break
+                if self.img_id % EVERY_FRAME != 0:
+                    continue
                 self.process_image()
-                self.show_image()
-                self.img_id += 1
+                # self.show_image()
             except Exception as e:
-                print(f"Failed to process {self.sample_path}: {e}")
-                break
+                print(f"Warning: failed to process {self.sample_path}: {e}")
+
         cap.release()
 
     def image_loop(self):
@@ -134,11 +149,12 @@ class AccuracyProcessor(Thread):
             str(p)
             for p in glob.iglob(str(self.sample_path) + "/**/*.jpg", recursive=True)
         ]
+        image_paths = sorted(image_paths)
         for image_path in image_paths:
+            self.img_id += 1
             self.img = cv2.imread(image_path)
             self.process_image()
-            self.show_image()
-            self.img_id += 1
+            # self.show_image()
             print(f"img_id={self.img_id}")
 
     def append_detection_data(
@@ -165,8 +181,7 @@ class AccuracyProcessor(Thread):
         # win_name = Path(self.sample_path).name
         # win_name = f"{self.img_id} {self.offset_time}"
         win_name = f"UltraAI:{self.video_file_num}"
-        zoom_factor = 0.67
-        self.img = cv2.resize(self.img, None, fx=zoom_factor, fy=zoom_factor)
+
         cv2.waitKey(1)
         cv2.imshow(self.cv2_window_name, self.img)
 
@@ -176,18 +191,84 @@ class AccuracyProcessor(Thread):
         saved_img_path = str(Path(self.output_path, f"{self.img_id}.jpg"))
         cv2.imwrite(saved_img_path, self.img)
 
-    def process_image(self):
-        # zoom_factor = 0.67
-        # self.img = cv2.resize(self.img, None, fx=zoom_factor, fy=zoom_factor)
+    def render_image_with_detections(
+            self,
+            detections,
+    ):
+        backend_color = DetectionHandler.colors["backend"]
+        frontend_color = DetectionHandler.colors["frontend"]
+        detections = sorted(detections, key=lambda e: get_first_item(self.capsule_mgmt.get_positions(e.bbox)))
+        # detections = sorted(detections, key=lambda e: e.class_name)
+        lines = []
+        num_of_detection = 0
+        for detection in detections:
+            num_of_detection += 1
+            bbox = detection.bbox
+            x1, x2, y1, y2 = self.capsule_mgmt.get_positions(bbox)
+            size = f"{abs(x1 - x2)}X{abs(y1 - y2)}"
 
+            img = self.img
+            lines.append("")
+            lines.append(f"{num_of_detection}")
+            lines.append(f"{detection.class_name}: {size}")
+            for key in detection.attributes:
+                lines.append(f"{key}: {detection.attributes[key]}")
+
+            for key in detection.extra_data:
+                lines.append(f"{key}: {detection.extra_data[key]}")
+
+            cv2.rectangle(img, (x1, y1), (x2, y2), backend_color, 1)
+            cv2.rectangle(img, (x1, y1), (x1 + 50, y1 + 50), backend_color, -1)
+            cv2.putText(
+                img=img,
+                text=f"{num_of_detection}",
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                fontScale=1.2,
+                org=(x1 + 15, y1 + 40),
+                color=frontend_color,
+                thickness=2,
+            )
+
+        print(f"Step1: original shape={self.img.shape}")
+        h, w = self.img.shape[:-1]
+        zoom_factor = 0.67 if h == 0 else SHOW_IMAGE_HEIGHT / h
+        self.img = cv2.resize(self.img, None, fx=zoom_factor, fy=zoom_factor)
+
+        legend_image_height, _ = self.img.shape[:-1]
+        legend_image = np.zeros((legend_image_height, 400, 3), np.uint8)
+        cv2.rectangle(legend_image, (0, 0), (400, legend_image_height), backend_color, -1)
+
+        print(f"Step2: legend_image shape={legend_image.shape}")
+
+        for idx in range(len(lines)):
+            text_line = lines[idx]
+            cv2.putText(
+                img=legend_image,
+                text=text_line,
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                fontScale=0.6,
+                org=(10, idx * 20),
+                color=frontend_color,
+                thickness=1,
+            )
+
+        self.img = np.concatenate((legend_image, self.img), axis=1)
+        print(f"Step3: joined shape={self.img.shape}")
+
+    def process_image(self):
         detections = self.capsule_mgmt.process_image(self.img)
         if detections is None or len(detections) == 0:
             return
 
+        if self.filter_class_names is not None:
+            detections = [detection for detection in detections if detection.class_name in self.filter_class_names]
+
         for detection in detections:
             self.detect_handler.process_detection(detection)
 
-        # self.show_image()
+        self.render_image_with_detections(detections)
+
+        self.show_image()
         self.save_image()
 
 
@@ -196,6 +277,8 @@ class DetectionHandler:
         "true": (0, 255, 0),
         "false": (255, 0, 0),
         "unknown": (0, 0, 255),
+        "frontend": (0, 0, 0),
+        "backend": (255, 255, 255),
     }
 
     def __init__(self, accuracy_processor: AccuracyProcessor):
@@ -231,65 +314,13 @@ class DetectionHandler:
 
         return detection_confidence, attribute_name_confidence
 
-    def render_image_with_detections(
-            self,
-            detection,
-            attribute_name,
-            attribute_type,
-            detection_confidence,
-            attribute_name_confidence,
-    ):
-        bbox = detection.bbox
-        x1, x2, y1, y2 = self.accuracy_processor.capsule_mgmt.get_positions(bbox)
-        color = DetectionHandler.colors[attribute_type]
-        img = self.accuracy_processor.img
-        cv2.rectangle(img, (x1, y1), (x2, y2), color, 1)
-        cv2.rectangle(img, (x1, y2 - 60), (x2 + 150, y2), (255, 255, 255), -1)
-        cv2.putText(
-            img=img,
-            text=f"{attribute_name}:{attribute_type}",
-            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-            fontScale=0.6,
-            org=(x1, y2 - 40),
-            color=color,
-        )
-        size = f"{abs(x1 - x2)}X{abs(y1 - y2)}"
-        cv2.putText(
-            img=img,
-            text=size,
-            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-            fontScale=0.6,
-            org=(x1, y2 - 20),
-            color=color,
-        )
-        cv2.putText(
-            img=img,
-            text=f"{attribute_name_confidence}",
-            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-            fontScale=0.6,
-            org=(x1, y2),
-            color=color,
-        )
-
     def process_detection(self, detection):
         attribute_name, attribute_type = self.get_attribute_type(detection)
-        if attribute_name is None or attribute_type is None:
-            return
-        detection_confidence, attribute_name_confidence = self.get_confidence(
-            detection, attribute_name
-        )
-        self.accuracy_processor.append_detection_data(
-            attribute_name,
-            attribute_type,
-            detection_confidence,
-            attribute_name_confidence,
-        )
-        if (
-                self.accuracy_processor.save_rendered_image
-                or self.accuracy_processor.show_rendered_image
-        ):
-            self.render_image_with_detections(
-                detection,
+        if attribute_name is not None and attribute_type is not None:
+            detection_confidence, attribute_name_confidence = self.get_confidence(
+                detection, attribute_name
+            )
+            self.accuracy_processor.append_detection_data(
                 attribute_name,
                 attribute_type,
                 detection_confidence,

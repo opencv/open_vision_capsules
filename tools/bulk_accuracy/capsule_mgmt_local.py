@@ -18,7 +18,7 @@ class LocalCapsuleManagement(BasicCapsuleManagement):
             "/home/leefr/brainframe/pharmacy/private/detector_80_objects"
         )
         self.classified_phoning, self.classified_phoning_options = load_local_capsule(
-            "/home/leefr/brainframe/pharmacy/private/classifier_phoning_factory_openvino3.3.cap",
+            "/home/leefr/brainframe/pharmacy/private/classifier_phoning_factory_openvino3.1.cap",
             "/home/leefr/brainframe/pharmacy/private/classifier_phoning_factory_openvino",
             {
                 "true threshold": 0.0,
