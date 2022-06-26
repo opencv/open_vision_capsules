@@ -257,17 +257,12 @@ class AccuracyProcessor(Thread):
 
     def process_image(self):
         detections = self.capsule_mgmt.process_image(self.img)
-        if detections is None or len(detections) == 0:
-            return
-
-        if self.filter_class_names is not None:
-            detections = [detection for detection in detections if detection.class_name in self.filter_class_names]
-
-        for detection in detections:
-            self.detect_handler.process_detection(detection)
-
-        self.render_image_with_detections(detections)
-
+        if detections is not None:
+            if self.filter_class_names is not None:
+                detections = [detection for detection in detections if detection.class_name in self.filter_class_names]
+            for detection in detections:
+                self.detect_handler.process_detection(detection)
+            self.render_image_with_detections(detections)
         self.show_image()
         self.save_image()
 

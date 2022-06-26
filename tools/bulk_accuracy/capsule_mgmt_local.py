@@ -122,9 +122,7 @@ class LocalCapsule:
 
 if __name__ == "__main__":
     # /home/leefr/capsules-test/capsules/detector_person_openvino.cap
-
     img = cv2.imread("/home/leefr/Pictures/test.jpg")
-
     local_capsule_mgmt = LocalCapsuleManagement()
     classified_detections = local_capsule_mgmt.process_image(img)
 

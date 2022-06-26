@@ -1,12 +1,18 @@
 import glob
+from io import BytesIO
 from pathlib import Path
+import base64
+
+import cv2
+import numpy as np
+from PIL import Image
 
 from tools.bulk_accuracy.capsule_accuracy_common import (
     SampleType,
     AccuracyProcessor,
 )
 from tools.bulk_accuracy.capsule_accuracy_report import output_detection_result_csv, sum_classified_data
-from tools.bulk_accuracy.capsule_mgmt_local import LocalCapsuleManagement
+from tools.bulk_accuracy.capsule_mgmt_local import LocalCapsuleManagement, load_local_capsule
 from tools.bulk_accuracy.capsule_mgmt_remote import RemoteCapsuleManagement
 
 
@@ -92,8 +98,16 @@ def test_classifier_images():
     sum_classified_data(detected_data)
 
 
+def test_package_capsule():
+    load_local_capsule(
+        packaged_capsule_path="/home/leefr/brainframe/pharmacy/private/attach_original_image1.1.cap",
+        unpackaged_capsule_path="/home/leefr/brainframe/pharmacy/private/attach_original_image",
+    )
+
+
 def main():
-    test_classifier_video_file()
+    test_package_capsule()
+    # test_classifier_video_file()
     # test_classifier_images()
     # test_safety_string_cell_video_file()
     # test_safety_string_cell_images()
