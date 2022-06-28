@@ -99,9 +99,14 @@ def test_classifier_images():
 
 
 def test_package_capsule():
+    packaged_capsule_path = "/home/leefr/brainframe/pharmacy/private/attach_original_image1.2.cap"
+    unpackaged_capsule_path = "/home/leefr/brainframe/pharmacy/private/attach_original_image"
+    capsule_path = Path(packaged_capsule_path)
+    if capsule_path.exists():
+        capsule_path.unlink()
     load_local_capsule(
-        packaged_capsule_path="/home/leefr/brainframe/pharmacy/private/attach_original_image1.1.cap",
-        unpackaged_capsule_path="/home/leefr/brainframe/pharmacy/private/attach_original_image",
+        packaged_capsule_path=packaged_capsule_path,
+        unpackaged_capsule_path=unpackaged_capsule_path,
     )
 
 
