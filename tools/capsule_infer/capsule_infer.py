@@ -33,7 +33,6 @@ def update_options(default_options, input_options):
 
 
 def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_paths, detection_name, input_options=None, capsule_key=None, wait_time=None):
-
     start_time = time()
     capsule = load_capsule(
         path=packaged_capsule_path, source_path=unpackaged_capsule_path, key=capsule_key
@@ -53,7 +52,7 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
     capsule_results = []
 
     for image_path in image_paths:
-        print(f"Running inference on {image_path}")
+        # print(f"Running inference on {image_path}")
         image = cv2.imread(str(image_path))
 
         if image is None:
@@ -81,7 +80,7 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
             state=capsule.stream_state(),
         )
         proc_time_ms = (time() - start_time) * 1000
-        print(f"Capsule process frame time {proc_time_ms:0.4f}ms")
+        # print(f"Capsule process frame time {proc_time_ms:0.4f}ms")
 
         if detection_node:
             valid_description = capsule.output_type.describes(detection_node)
