@@ -88,17 +88,6 @@ class BaseOpenVINOBackend(BaseBackend):
         # For running threaded requests to the network
         self._StatusCode = StatusCode
         self._get_free_request_lock = RLock()
-        self._request_free_events: List[Event] = [
-            Event() for _ in self.exec_net.requests]
-        """This list corresponds 1:1 with request ID's from OpenVINO. 
-        The Events are used to make sure that the request isn't in the middle
-        of running a callback while another thread attempts to start another
-        async request. 
-        
-        The events start as 'set' to indicate they are free to run
-        """
-        for request_free in self._request_free_events:
-            request_free.set()
 
         # For keeping track of the workload for this backend
         self._total_requests: int = len(self.exec_net.requests)
@@ -138,24 +127,17 @@ class BaseOpenVINOBackend(BaseBackend):
                 if request_id < 0:
                     raise RuntimeError(f"Invalid request_id: {request_id}")
 
-            request = self.exec_net.requests[request_id]
-            request_free = self._request_free_events[request_id]
-
             def on_result(*args):
-                future.set_result(request.outputs)
-                request_free.set()
+                future.set_result(self.exec_net.requests[request_id].outputs)
                 with self._num_ongoing_requests_lock:
                     self._num_ongoing_requests -= 1
 
-            # Make sure that the callback for this request is finished, by
-            # calling request_free.wait().
-            request_free.wait()
-            request_free.clear()
-            request.set_completion_callback(on_result)
+            self.exec_net.requests[request_id].set_completion_callback(on_result)
 
             with self._num_ongoing_requests_lock:
                 self._num_ongoing_requests += 1
-            request.async_infer(input_data)
+            self.exec_net.requests[request_id].async_infer(input_data)
+            self.exec_net.requests[request_id].wait()
 
         return future
 
