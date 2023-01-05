@@ -17,7 +17,7 @@ from .options import (
     common_detector_options,
     OPTION_TYPE
 )
-from .loading.packaging import (
+from .loading.vcap_packaging import (
     CAPSULE_EXTENSION,
     package_capsule
 )
