@@ -91,7 +91,7 @@ def unpackage_capsule(capsule_file: Union[str, Path],
                     output.write(output_file)
 
 
-def packaging():
+def packaging_parse_args():
     parser = ArgumentParser(description='Package capsules and unpackage a capsule file')
     parser.add_argument(
         "--capsule-dir",
@@ -111,29 +111,41 @@ def packaging():
         required=False,
         help="The encrption key for packaging or unpackaging"
     )
-    args = parser.parse_args()
+    return parser
 
-    if args.capsule_dir is not None:
-        for path in args.capsule_dir.iterdir():
+
+def packaging(capsule_dir, capsule_file, capsule_key):
+    if capsule_dir is not None:
+        for path in capsule_dir.iterdir():
             if path.is_dir():
                 package_capsule(
                     unpackaged_dir=path,
                     output_file=path.with_suffix(CAPSULE_EXTENSION),
-                    key=args.capsule_key,
+                    key=capsule_key,
                 )
-    elif args.capsule_file is not None:
-        capsule_filepath, file_ext = os.path.splitext(args.capsule_file)
+    elif capsule_file is not None:
+        capsule_filepath, file_ext = os.path.splitext(capsule_file)
         if file_ext == CAPSULE_EXTENSION:
             unpackage_capsule(
-                capsule_file = args.capsule_file,
+                capsule_file = capsule_file,
                 unpackage_to = capsule_filepath,
-                key = args.capsule_key
+                key = capsule_key
             )
         else:
-            parser.print_help()
+            return False
     else:
+        return False
+
+    return True
+
+
+def packaging_main():
+    parser = packaging_parse_args()
+    args = parser.parse_args()
+    rtn = packaging(args.capsule_dir, args.capsule_file, args.capsule_key)
+    if rtn == False:
         parser.print_help()
 
 
 if __name__ == "__main__":
-    packaging()
+    packaging_main()
