@@ -171,7 +171,11 @@ def validate_capsule(capsule: BaseCapsule) -> Optional[NoReturn]:
     return detection_required
 
 
-def capsule_infer_add_args(parser):
+def capsule_infer_add_args():
+    parser = ArgumentParser(
+        description="A helpful tool for running inference on a capsule."
+    )
+
     parser.add_argument(
         "--capsule",
         required=True,
@@ -202,6 +206,7 @@ def capsule_infer_add_args(parser):
         help="Capsule key to load an encrypted capsule. Use 'brainframe' as the key "
         "to load capsules signed for BrainFrame"
     )
+    return parser
 
 
 def read_options(option_file):
@@ -255,14 +260,7 @@ def capsule_options_and_key(args):
     return input_options, capsule_key
 
 
-def capsule_infer():
-    parser = ArgumentParser(
-        description="A helpful tool for running inference on a capsule."
-    )
-
-    capsule_infer_add_args(parser)
-
-    args = parser.parse_args()
+def capsule_infer(args):
 
     image_paths = parse_images(args.images)
 
@@ -275,5 +273,11 @@ def capsule_infer():
     print(results)
 
 
+def capsule_infer_main():
+    parser = capsule_infer_add_args()
+    args = parser.parse_args()
+    capsule_infer(args)
+
+
 if __name__ == "__main__":
-   capsule_infer()
+   capsule_infer_main()

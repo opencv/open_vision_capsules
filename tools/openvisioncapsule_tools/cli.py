@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 import i18n
 from openvisioncapsule_tools import print_utils, command_utils
 from openvisioncapsule_tools.capsule_packaging import capsule_packaging
+from openvisioncapsule_tools.capsule_infer import capsule_infer
 
 
 def cli_main():

@@ -1,0 +1,1 @@
+from .capsule_inference import capsule_inference_main

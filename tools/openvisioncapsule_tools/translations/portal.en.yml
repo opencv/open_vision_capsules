@@ -7,6 +7,7 @@ en:
 
     commands:
       capsule_packaging
+      capsule_inference
 
     Examples:
       openvisioncapsule-tools capsule_packaging
