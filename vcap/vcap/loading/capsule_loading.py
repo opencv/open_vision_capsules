@@ -12,9 +12,9 @@ from zipfile import ZipFile
 from vcap import BaseCapsule, BaseBackend, BaseStreamState, NodeDescription
 from vcap.loading.errors import IncompatibleCapsuleError, InvalidCapsuleError
 
-from .crypto_utils import decrypt
-from .import_hacks import ZipFinder
-from .packaging import CAPSULE_FILE_NAME, META_FILE_NAME
+from vcap.loading.crypto_utils import decrypt
+from vcap.loading.import_hacks import ZipFinder
+from vcap.loading.vcap_packaging import CAPSULE_FILE_NAME, META_FILE_NAME
 
 MAJOR_COMPATIBLE_VERSION = 0
 MINOR_COMPATIBLE_VERSION = 3

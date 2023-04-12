@@ -21,7 +21,7 @@ from vcap import (
     IntOption,
     BoolOption,
     EnumOption)
-from vcap.loading.packaging import CAPSULE_EXTENSION, package_capsule
+from vcap.loading.vcap_packaging import CAPSULE_EXTENSION, package_capsule
 from vcap.testing import load_capsule_with_one_device
 from vcap.testing.thread_validation import verify_all_threads_closed
 
