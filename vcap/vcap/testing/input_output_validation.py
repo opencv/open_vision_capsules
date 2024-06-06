@@ -221,7 +221,7 @@ def perform_capsule_tests(unpackaged_capsule_dir: Union[Path, str],
     """
     unpackaged_capsule_dir = Path(unpackaged_capsule_dir)
 
-    logging.info("Testing capsule name: ", unpackaged_capsule_dir.name)
+    logging.info(f"Testing capsule name: {unpackaged_capsule_dir.name}")
     packaged_capsule_path = (unpackaged_capsule_dir
                              .with_name(unpackaged_capsule_dir.stem)
                              .with_suffix(CAPSULE_EXTENSION))
