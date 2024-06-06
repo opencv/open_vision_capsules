@@ -4,11 +4,11 @@ from typing import Dict, List, Tuple
 from concurrent.futures import Future
 
 import numpy as np
-# from tensorflow.python.keras.applications.mobilenet_v2 import preprocess_input
+from tensorflow.python.keras.applications.mobilenet_v2 import preprocess_input
 
 from vcap import Resize, BaseBackend, DetectionNode
 
-from openvino.inference_engine import IECore, ExecutableNetwork, IENetwork, StatusCode
+from openvino.runtime import Core, AsyncInferQueue
 
 _SUPPORTED_METRICS = "SUPPORTED_METRICS"
 _RANGE_FOR_ASYNC_INFER_REQUESTS = "RANGE_FOR_ASYNC_INFER_REQUESTS"
@@ -26,40 +26,34 @@ class BaseOpenVINOBackend(BaseBackend):
         :param ie_core: :
           None (default): The backend will initialize its own IECore to load
           the network with.
-          IECore: An initialized openvino.inference_engine.IECore, with any
+          IECore: An initialized openvino.runtime.Core, with any
           settings already applied. This can be used to apply CPU extensions
           or load different plugins to the IECore giving it to the backend.
         """
         # Convert from the vcap device naming format to openvino format
         device_name = "CPU" if device_name[:4] == "CPU:" else device_name
 
-        self.ie = ie_core or IECore()
+        self.ie = ie_core or Core()
 
         # If the device is a MULTI device, use the default num_requests
         is_multi_device = device_name.lower().startswith("multi")
 
         num_requests = 0
         if not is_multi_device:
-            # Find the optimal number of InferRequests for this device
-            supported_metrics = self.ie.get_metric(
-                device_name, _SUPPORTED_METRICS)
-            if _RANGE_FOR_ASYNC_INFER_REQUESTS in supported_metrics:
-                low, high, _ = self.ie.get_metric(
-                    device_name, _RANGE_FOR_ASYNC_INFER_REQUESTS)
-                # Cap the num_requests, because setting it too high can crash
-                # TODO(Alex): Figure out _why_ hddl crashes when set to 'high'
-                num_requests = max(0, min(low * 2, high))
+            try:
+                # Find the optimal number of InferRequests for this device
+                num_requests = self.ie.get_property(device_name, "OPTIMAL_NUMBER_OF_INFER_REQUESTS")
+            except RuntimeError:
+                num_requests = 1  # Default value if the property is not supported
 
-        self.net: IENetwork = self.ie.read_network(
+        self.model = self.ie.read_model(
             model=model_xml,
-            weights=weights_bin,
-            init_from_buffer=True)
+            weights=weights_bin)
 
         try:
-            self.exec_net: ExecutableNetwork = self.ie.load_network(
-                network=self.net,
-                device_name=device_name,
-                num_requests=num_requests)
+            self.compiled_model = self.ie.compile_model(
+                model=self.model,
+                device_name=device_name)
         except RuntimeError as e:
             if device_name == "CPU":
                 # It's unknown why this would happen when loading
@@ -81,15 +75,15 @@ class BaseOpenVINOBackend(BaseBackend):
             return
 
         # Pull out a couple useful constants
-        self.input_blob_names: List[str] = list(self.net.input_info.keys())
-        self.output_blob_names: List[str] = list(self.net.outputs.keys())
+        self.input_blob_names: List[str] = [node.get_any_name() for node in self.compiled_model.inputs]
+        self.output_blob_names: List[str] = [node.get_any_name() for node in self.compiled_model.outputs]
 
         # For running threaded requests to the network
-        self._StatusCode = StatusCode
+        self.infer_queue = AsyncInferQueue(self.compiled_model, num_requests or self.compiled_model.get_property("OPTIMAL_NUMBER_OF_INFER_REQUESTS"))
         self._get_free_request_lock = RLock()
 
         # For keeping track of the workload for this backend
-        self._total_requests: int = len(self.exec_net.requests)
+        self._total_requests: int = num_requests or self.compiled_model.get_property("OPTIMAL_NUMBER_OF_INFER_REQUESTS")
         self._num_ongoing_requests: int = 0
         self._cond: Condition = Condition()
 
@@ -97,7 +91,7 @@ class BaseOpenVINOBackend(BaseBackend):
     def workload(self) -> float:
         """Returns the percent saturation of this backend. The backend is
         at max 'efficiency' once the number of ongoing requests is equal to
-        or over number of exec_net.requests
+        or over number of _total_requests
 
         This won't affect much unless a custom DeviceMapper filter is used that
         allows multiple Backends to be loaded, eg, a backend for CPU and a
@@ -114,33 +108,30 @@ class BaseOpenVINOBackend(BaseBackend):
         future = Future()
 
         with self._get_free_request_lock:
-            # Try to get at least one request
-            request_id = self.exec_net.get_idle_request_id()
-            if request_id < 0:
-                # Since there was no free request, wait for one
-                status = self.exec_net.wait(num_requests=1)
-                if status != self._StatusCode.OK:
-                    raise RuntimeError(
-                        f"Wait for idle request failed with code {status}")
-                request_id = self.exec_net.get_idle_request_id()
-                if request_id < 0:
-                    raise RuntimeError(f"Invalid request_id: {request_id}")
+            def on_result(request, args):
+                future, cond = args
+                try:
+                    future.set_result(request.results)
+                except Exception as e:
+                    future.set_exception(e)
+                finally:
+                    with cond:
+                        self._num_ongoing_requests -= 1
+                        cond.notify()
 
-            def on_result(request_id, args):
-                request, future, cond = args
-                future.set_result(request.outputs)
-                with cond:
-                    self._num_ongoing_requests -= 1
-                    cond.notify()
+            args = future, self._cond
+            try:
 
-            args = self.exec_net.requests[request_id], future, self._cond
-            self.exec_net.requests[request_id].set_completion_callback(on_result, args)
+                self.infer_queue.set_callback(on_result)
 
-            with self._cond:
-                self._num_ongoing_requests += 1
+                with self._cond:
+                    self._num_ongoing_requests += 1
 
-                self.exec_net.requests[request_id].async_infer(input_data)
-                self._cond.wait()
+                    self.infer_queue.start_async(input_data, args)
+                    self._cond.wait()
+            except Exception as e:
+                logging.error(f"Exception during inference: {e}")
+                raise
 
         return future
 
@@ -161,20 +152,23 @@ class BaseOpenVINOBackend(BaseBackend):
             inputs
         :returns: ({input_name: resized_frame}, Resize)
         """
-        if not frame_input_name and len(self.net.input_info) > 1:
+        if not frame_input_name and len(self.compiled_model.inputs) > 1:
             raise ValueError("More than one input was expected for model, but "
                              "default prepare_inputs implementation was used.")
 
         input_blob_name = frame_input_name or self.input_blob_names[0]
-        input_data = self.net.input_info[input_blob_name].input_data
+        input_node = next((node for node in self.compiled_model.inputs if node.get_any_name() == input_blob_name), None)
+        if input_node is None:
+            raise ValueError(f"Input blob name '{input_blob_name}' not found in model inputs.")
 
-        _, _, h, w = input_data.shape
+        _, _, h, w = input_node.get_shape()
         resize = Resize(frame).resize(w, h, Resize.ResizeType.EXACT)
 
         # Change data layout from HWC to CHW
         in_frame = np.transpose(resize.frame.copy(), (2, 0, 1))
-        # This breaks capsule backward compatibility?
-        # in_frame = np.expand_dims(in_frame, axis=0)
+        # Add batch dimension
+        in_frame = np.expand_dims(in_frame, axis=0)
+        # Preprocess the input if needed
         # in_frame = preprocess_input(in_frame)
 
         return {input_blob_name: in_frame}, resize
@@ -200,13 +194,23 @@ class BaseOpenVINOBackend(BaseBackend):
         :returns: A list of DetectionNodes, in this case representing bounding
         boxes.
         """
-        output_blob_name = boxes_output_name or self.output_blob_names[0]
-        inference_results = results[output_blob_name]
+        try:
+            if boxes_output_name and boxes_output_name in results:
+                output_blob_name = boxes_output_name
+            else:
+                output_blob_name = next(iter(results.keys()))
 
-        input_name = frame_input_name or self.input_blob_names[0]
-        _, _, h, w = self.net.input_info[input_name].input_data.shape
+            inference_results = results[output_blob_name]
 
-        nodes: List[DetectionNode] = []
+            input_name = frame_input_name or self.input_blob_names[0]
+            input_node = next(node for node in self.compiled_model.inputs if node.get_any_name() == input_name)
+            _, _, h, w = input_node.shape
+
+            nodes: List[DetectionNode] = []
+        except Exception as e:
+            logging.error(f"parse_detection_results: Exception {e}")
+            raise
+
         for result in inference_results[0][0]:
             # If the first index == 0, that's the end of real predictions
             # The network always outputs an array of length 200 even if it does
@@ -242,8 +246,6 @@ class BaseOpenVINOBackend(BaseBackend):
         # (or other plugins), dereferencing everything is the safest way
         # to go. Without this, OpenVINO seems to crash the HDDL daemon.
         del self.ie
-        del self.net
-        del self.exec_net
+        del self.model
         self.ie = None
-        self.net = None
-        self.exec_net = None
+        self.model = None
