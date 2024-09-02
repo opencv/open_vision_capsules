@@ -141,7 +141,6 @@ class BaseOpenVINOBackend(BaseBackend):
                 self._num_ongoing_requests += 1
 
                 self.exec_net.requests[request_id].async_infer(input_data)
-                # @todo Don't we need to check the return of async_infer() before wait()?
                 self._cond.wait()
 
         return future
