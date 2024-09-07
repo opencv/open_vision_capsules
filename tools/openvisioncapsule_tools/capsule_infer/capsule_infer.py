@@ -16,6 +16,12 @@ from vcap import (
     package_capsule,
 )
 
+import sys
+
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+sys.path.insert(0, parent_dir)
+
+from tools.openvisioncapsule_tools.print_module_info import print_module_info
 
 def update_options(default_options, input_options):
     capsule_options = {}
@@ -280,4 +286,8 @@ def capsule_infer_main():
 
 
 if __name__ == "__main__":
-   capsule_infer_main()
+    print('Module information:')
+    print_module_info('vcap')
+    print_module_info('vcap_utils')
+    print_module_info('openvino')
+    capsule_infer_main()
