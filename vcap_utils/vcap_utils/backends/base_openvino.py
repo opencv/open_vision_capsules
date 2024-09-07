@@ -1,5 +1,5 @@
 import logging
-from threading import Event, RLock
+from threading import Event, RLock, Condition
 from typing import Dict, List, Tuple
 from concurrent.futures import Future
 
@@ -92,7 +92,7 @@ class BaseOpenVINOBackend(BaseBackend):
         # For keeping track of the workload for this backend
         self._total_requests: int = len(self.exec_net.requests)
         self._num_ongoing_requests: int = 0
-        self._num_ongoing_requests_lock: RLock = RLock()
+        self._cond: Condition = Condition()
 
     @property
     def workload(self) -> float:
@@ -127,17 +127,22 @@ class BaseOpenVINOBackend(BaseBackend):
                 if request_id < 0:
                     raise RuntimeError(f"Invalid request_id: {request_id}")
 
-            def on_result(*args):
-                future.set_result(self.exec_net.requests[request_id].outputs)
-                with self._num_ongoing_requests_lock:
+            def on_result(request_id, args):
+                request, future, cond = args
+                future.set_result(request.outputs)
+                with cond:
                     self._num_ongoing_requests -= 1
+                    cond.notify()
 
-            self.exec_net.requests[request_id].set_completion_callback(on_result)
+            args = self.exec_net.requests[request_id], future, self._cond
+            self.exec_net.requests[request_id].set_completion_callback(on_result, args)
 
-            with self._num_ongoing_requests_lock:
+            with self._cond:
                 self._num_ongoing_requests += 1
-            self.exec_net.requests[request_id].async_infer(input_data)
-            self.exec_net.requests[request_id].wait()
+
+                self.exec_net.requests[request_id].async_infer(input_data)
+                # @todo Don't we need to check the return of async_infer() before wait()?
+                self._cond.wait()
 
         return future
 
