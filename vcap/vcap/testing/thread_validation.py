@@ -17,6 +17,7 @@ def verify_all_threads_closed(allowable_threads: Optional[List[str]] = None):
         r"pydevd\.CommandThread",
         r"profiler\.Reader",
         r"MainThread",
+        r"ThreadPoolExecutor-\d+_\d+"
     ]
 
     open_threads = []

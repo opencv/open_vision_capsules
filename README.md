@@ -53,7 +53,18 @@ sure to run the tests with pytest (from the root of the repo). The tests
 download all the necessary models and images, including the models for the 
 example capsules.
 
+Make sure vcap & vcap-utils installation is done before tests,
+
+```
+pytest -v -x .
+```
+
 A repository of open source capsules can be found [here][capsule_zoo].
 
 [docs]: https://openvisioncapsules.readthedocs.io/en/latest/
 [capsule_zoo]: https://github.com/aotuai/capsule_zoo
+
+capsule inference test,
+```
+python3 tools/openvisioncapsule_tools/capsule_infer/capsule_infer.py --capsule ../capsule-zoo/capsules/detector_person_vehicle_bike_openvino  --images tests/test_images/two_people.jpg
+```
