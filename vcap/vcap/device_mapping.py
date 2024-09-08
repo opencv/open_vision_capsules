@@ -5,6 +5,7 @@ from typing import Callable, List
 
 import tensorflow as tf
 from tensorflow.python.client import device_lib
+from openvino.inference_engine import IECore
 
 _devices = None
 _devices_lock = RLock()
@@ -36,7 +37,6 @@ def get_all_devices() -> List[str]:
 
             # Discover devices using OpenVINO
             try:
-                from openvino.inference_engine import IECore
                 ie = IECore()
                 openvino_discovered_devices = {
                     d for d in ie.available_devices
