@@ -86,13 +86,13 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
             state=capsule.stream_state(),
         )
         proc_time_ms = (time() - start_time) * 1000
-        # print(f"Capsule process frame time {proc_time_ms:0.4f}ms")
+        print(f"Capsule process frame time {proc_time_ms:0.4f}ms")
 
         if detection_node:
             valid_description = capsule.output_type.describes(detection_node)
 
             if not valid_description:
-                assert False, (
+                print(
                     f"Ignoring node from {capsule.name} because it does not match the "
                     f"capsules output type description. "
                     f"\nNode: {detection_node} "
@@ -107,7 +107,8 @@ def capsule_inference(packaged_capsule_path, unpackaged_capsule_path, image_path
             )
 
         if wait_time is not None:
-            [print(f"Results: {result}") for result in results]
+            if results is not None:
+                [print(f"Results: {result}") for result in results]
             cv2.imshow("Results", image)
             cv2.waitKey(wait_time)
 
