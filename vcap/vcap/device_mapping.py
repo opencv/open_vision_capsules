@@ -5,7 +5,6 @@ from typing import Callable, List
 
 import tensorflow as tf
 from tensorflow.python.client import device_lib
-from openvino.runtime import Core
 
 _devices = None
 _devices_lock = RLock()
@@ -37,7 +36,11 @@ def get_all_devices() -> List[str]:
 
             # Discover devices using OpenVINO
             try:
+
+                from openvino.runtime import Core
+
                 ie = Core()
+
                 openvino_discovered_devices = {
                     d for d in ie.available_devices
                     if not d.lower().startswith("cpu")

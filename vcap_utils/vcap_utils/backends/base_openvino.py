@@ -8,8 +8,6 @@ from tensorflow.python.keras.applications.mobilenet_v2 import preprocess_input
 
 from vcap import Resize, BaseBackend, DetectionNode
 
-from openvino.runtime import Core, AsyncInferQueue
-
 _SUPPORTED_METRICS = "SUPPORTED_METRICS"
 _RANGE_FOR_ASYNC_INFER_REQUESTS = "RANGE_FOR_ASYNC_INFER_REQUESTS"
 OV_INPUT_TYPE = Dict[str, np.ndarray]
@@ -32,6 +30,8 @@ class BaseOpenVINOBackend(BaseBackend):
         """
         # Convert from the vcap device naming format to openvino format
         device_name = "CPU" if device_name[:4] == "CPU:" else device_name
+
+        from openvino.runtime import Core, AsyncInferQueue
 
         self.ie = ie_core or Core()
 
