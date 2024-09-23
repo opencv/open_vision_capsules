@@ -123,17 +123,25 @@ def render_detections( classes,
         from_pt, to_pt = tuple((int(x), int(y)) for x, y in (from_pt, to_pt))
         cv2.line(image, from_pt, to_pt, color, thickness=thickness, lineType=cv2.LINE_8)
 
-    def text(coords, label):
+    def text(coords, label, line=0, alpha=0.5, line_spacing=1.2):
         x, y = coords[0]
-        pt = (x, y)
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.8
-        font_thickness = 2
+        font_scale = 0.6
+        font_thickness = 1
         text_color = (255, 100, 100)
-        text_color_bg = color # (30, 255, 255)
+        text_color_bg = color
         text_size, _ = cv2.getTextSize(label, font, font_scale, font_thickness)
         text_w, text_h = text_size
-        cv2.rectangle(image, pt, (x + text_w, y - text_h), text_color_bg, -1)
+
+        x0 = int(x)
+        y0 = int(y + text_h * line * line_spacing)
+        pt1 = (x0, y0)
+        rect_h = int(text_h * line_spacing)
+        pt2 = (x0 + text_w, y0 + rect_h)
+        overlay = image.copy()
+        cv2.rectangle(image, pt1, pt2, text_color_bg, -1)
+        cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
+        pt = (x0, y0 + text_h)
         cv2.putText(image, label, pt, font, font_scale, text_color, font_thickness)
 
     if results is None:
@@ -165,6 +173,14 @@ def render_detections( classes,
         label = f'{class_name}: {detection_confidence:.04f}'
         text(detection.coords, label)
 
+        if 'text' in detection.extra_data:
+            text_result = detection.extra_data['text']
+            label = f'{text_result}'
+            text(detection.coords, label, 1)
+            if 'confidence' in detection.extra_data:
+                confidence = detection.extra_data['confidence']
+                label = f'confidence: {confidence:.04f}'
+                text(detection.coords, label, 2)
 
 def validate_capsule(capsule: BaseCapsule) -> Optional[NoReturn]:
     """Returns errors if the capsule is not compatible with this script"""
