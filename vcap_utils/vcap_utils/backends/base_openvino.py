@@ -80,6 +80,8 @@ class BaseOpenVINOBackend(BaseBackend):
 
         # For running threaded requests to the network
         self.infer_queue = AsyncInferQueue(self.compiled_model, num_requests or self.compiled_model.get_property("OPTIMAL_NUMBER_OF_INFER_REQUESTS"))
+        self.infer_queue.set_callback(self.on_result)
+
         self._get_free_request_lock = RLock()
 
         # For keeping track of the workload for this backend
@@ -100,6 +102,17 @@ class BaseOpenVINOBackend(BaseBackend):
         """
         return self._num_ongoing_requests / self._total_requests
 
+    def on_result(self, request, userdata):
+        future = userdata
+        try:
+            future.set_result(request.results)
+        except Exception as e:
+            future.set_exception(e)
+        finally:
+            with self._cond:
+                self._num_ongoing_requests -= 1
+                self._cond.notify()
+
     def send_to_batch(self, input_data: OV_INPUT_TYPE) -> Future:
         """Efficiently send the input to be inferenced by the network
         :param input_data: Input to the network
@@ -108,30 +121,18 @@ class BaseOpenVINOBackend(BaseBackend):
         future = Future()
 
         with self._get_free_request_lock:
-            def on_result(request, args):
-                future, cond = args
+
+            with self._cond:
                 try:
-                    future.set_result(request.results)
-                except Exception as e:
-                    future.set_exception(e)
-                finally:
-                    with cond:
-                        self._num_ongoing_requests -= 1
-                        cond.notify()
-
-            args = future, self._cond
-            try:
-
-                self.infer_queue.set_callback(on_result)
-
-                with self._cond:
                     self._num_ongoing_requests += 1
 
-                    self.infer_queue.start_async(input_data, args)
-                    self._cond.wait()
-            except Exception as e:
-                logging.error(f"Exception during inference: {e}")
-                raise
+                    self.infer_queue.start_async(input_data, userdata = future)
+                    if not self._cond.wait(timeout=30):
+                        raise TimeoutError("Inference request timed out!")
+                except Exception as e:
+                    self._num_ongoing_requests -= 1
+                    logging.error(f"Exception during inference or wait: {e}")
+                    future.set_exception(e)
 
         return future
 
