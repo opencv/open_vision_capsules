@@ -1,5 +1,5 @@
 import logging
-from threading import Event, RLock, Condition
+from threading import RLock, Condition
 from typing import Dict, List, Tuple
 from concurrent.futures import Future
 
@@ -35,17 +35,6 @@ class BaseOpenVINOBackend(BaseBackend):
 
         self.ie = ie_core or Core()
 
-        # If the device is a MULTI device, use the default num_requests
-        is_multi_device = device_name.lower().startswith("multi")
-
-        num_requests = 0
-        if not is_multi_device:
-            try:
-                # Find the optimal number of InferRequests for this device
-                num_requests = self.ie.get_property(device_name, "OPTIMAL_NUMBER_OF_INFER_REQUESTS")
-            except RuntimeError:
-                num_requests = 1  # Default value if the property is not supported
-
         self.model = self.ie.read_model(
             model=model_xml,
             weights=weights_bin)
@@ -79,13 +68,17 @@ class BaseOpenVINOBackend(BaseBackend):
         self.output_blob_names: List[str] = [node.get_any_name() for node in self.compiled_model.outputs]
 
         # For running threaded requests to the network
-        self.infer_queue = AsyncInferQueue(self.compiled_model, num_requests or self.compiled_model.get_property("OPTIMAL_NUMBER_OF_INFER_REQUESTS"))
+        try:
+            self._total_requests = self.compiled_model.get_property("OPTIMAL_NUMBER_OF_INFER_REQUESTS")
+        except RuntimeError:
+            self._total_requests = 1  # Default value if the property is not supported
+
+        self.infer_queue = AsyncInferQueue(self.compiled_model, self._total_requests)
         self.infer_queue.set_callback(self.on_result)
 
         self._get_free_request_lock = RLock()
 
         # For keeping track of the workload for this backend
-        self._total_requests: int = num_requests or self.compiled_model.get_property("OPTIMAL_NUMBER_OF_INFER_REQUESTS")
         self._num_ongoing_requests: int = 0
         self._cond: Condition = Condition()
 
@@ -246,7 +239,16 @@ class BaseOpenVINOBackend(BaseBackend):
         # Since there's no way to tell OpenVINO to close sockets to HDDL
         # (or other plugins), dereferencing everything is the safest way
         # to go. Without this, OpenVINO seems to crash the HDDL daemon.
+        del self.infer_queue
         del self.ie
         del self.model
+        del self.compiled_model
+        self.infer_queue = None
         self.ie = None
         self.model = None
+        self.compiled_model = None
+ 
+    def __del__(self):
+        if hasattr(self, 'infer_queue') and self.infer_queue is not None:
+            self.close()
+
