@@ -121,6 +121,7 @@ class BaseOpenVINOBackend(BaseBackend):
 
                     self.infer_queue.start_async(input_data, userdata = future)
                     if not self._cond.wait(timeout=30):
+                        self._num_ongoing_requests -= 1
                         raise TimeoutError("Inference request timed out!")
                 except Exception as e:
                     self._num_ongoing_requests -= 1
