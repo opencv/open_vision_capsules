@@ -1,6 +1,7 @@
 import gc
 import logging
 import random
+from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import sys
@@ -125,7 +126,10 @@ def _run_inference_on_images(images: List[np.ndarray], capsule: BaseCapsule):
 
         for future, input_node in request_input:
             # Postprocess the results
-            prediction = future.result(timeout=90)
+            try:
+                prediction = future.result(timeout=90)
+            except futures.TimeoutError as e:
+                raise TimeoutError("Wait for capsule process_frame result: TimeoutError!")
 
             # Verify that the capsule performed correctly
 
