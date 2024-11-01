@@ -14,7 +14,7 @@ requirements, allowing OpenVisionCapsules to route data between capsules
 automatically.
 
 This project is split into two packages, `vcap` and `vcap-utils`. `vcap`
-contains the necessary facilities to create and encapsulate and algorithm.
+contains the necessary facilities to create and encapsulate an algorithm.
 `vcap-utils` contains a set of utilities that make encapsulating algorithms of
 certain types easier.
 
