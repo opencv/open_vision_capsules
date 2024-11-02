@@ -65,7 +65,7 @@ docker run -it --rm -v ./tools:/open_vision_capsules/tools -w /open_vision_capsu
 ```
 Then
 ```shell
-pip install tools/dist/openvisioncapsule_tools-0.3.7-py3-none-any.whl
+pip install tools/dist/openvisioncapsule_tools-0.3.8-py3-none-any.whl
 openvisioncapsule-tools
 ```
 

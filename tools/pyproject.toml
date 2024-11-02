@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openvisioncapsule-tools"
-version = "0.3.7"
+version = "0.3.8"
 description = "A tool to help users to package, test OpenVisionCapsules"
 authors = ["Stephen Li <stephen@aotu.ai>"]
 license = "BSD license"
