@@ -7,6 +7,7 @@ license = "BSD license"
 
 [tool.poetry.dependencies]
 python = "^3.8"
+PyYAML = "^6.0.2"
 # altair = "*" # "5.4.1"
 Cython = "0.29.30"
 matplotlib = "3.5.1"

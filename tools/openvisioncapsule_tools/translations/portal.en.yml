@@ -1,17 +1,18 @@
 en:
-  description: "visioncapsule-tools is a group of commands written in Python. They
-  help to download, package and test VisionCapsules. To see options of each
-  command, run \"openvisioncapsule-tools {command} --help\"."
-  usage: >-
-    openvisioncapsule-tools <command> [<args>]
+  portal:
+    description: "visioncapsule-tools is a group of commands written in Python. They
+    help to download, package and test VisionCapsules. To see options of each
+    command, run \"openvisioncapsule-tools {command} --help\"."
+    usage: >-
+      openvisioncapsule-tools <command> [<args>]
 
-    commands:
-      capsule_packaging
-      capsule_inference
+      commands:
+        capsule_packaging
+        capsule_inference
 
-    Examples:
-      openvisioncapsule-tools capsule_packaging
+      Examples:
+        openvisioncapsule-tools capsule_packaging
  
-  command-help: "The openvisioncapsule-tools command to run"
-  unknown-command: "Unknown command: {command}"
-  interrupted: "The operation was interrupted"
+    command-help: "The openvisioncapsule-tools command to run"
+    unknown-command: "Unknown command: {command}"
+    interrupted: "The operation was interrupted"
