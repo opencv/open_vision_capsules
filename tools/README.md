@@ -9,7 +9,7 @@ Clean up a build,
 python3 compile.py clean 
 ```
 
-# Capsule Infer
+# Capsule Inference
 
 This tool is used during development to quickly and easily run inference 
 with a capsule. 
@@ -45,3 +45,28 @@ python3 capsule_classifier_accuracy.py --capsule <capsule directory or .cap> --i
 Optional image categories are as follows,
 
  `--images`, `--images-true`, `--images-false`
+
+# Build the module
+Build the environment first,
+```shell
+DOCKER_BUILDKIT=1 docker build --file tools/Dockerfile.build-env --build-arg UBUNTU_VERSION=20.04 --tag open_vision_capsule_env --no-cache .
+```
+Then build the module
+```shell
+docker run -it --rm -v ./tools:/open_vision_capsules/tools -w /open_vision_capsules/tools open_vision_capsule_env:latest bash -c "poetry build"
+```
+Build an Ubuntu image for testing the module
+```shell
+DOCKER_BUILDKIT=1 docker build --file tools/Dockerfile.ubuntu --build-arg UBUNTU_VERSION=20.04 --tag ubuntu-2004 .
+```
+Run the Ubuntu image for testing the module
+```shell
+docker run -it --rm -v ./tools:/open_vision_capsules/tools -w /open_vision_capsules/ ubuntu-2004 bash
+```
+Then
+```shell
+pip install tools/dist/openvisioncapsule_tools-0.3.7-py3-none-any.whl
+openvisioncapsule-tools
+```
+
+

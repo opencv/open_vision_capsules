@@ -6,7 +6,22 @@ authors = ["Stephen Li <stephen@aotu.ai>"]
 license = "BSD license"
 
 [tool.poetry.dependencies]
-python = ">=3.6.6.2,<4.0"
+python = "^3.8"
+# altair = "*" # "5.4.1"
+Cython = "0.29.30"
+matplotlib = "3.5.1"
+numpy = ">=1.19.2,<1.20.0"
+opencv_contrib_python = "*"
+opencv_contrib_python_headless = "*"
+# opencv_python = "4.5.5.62"
+openvino = "2024.1.0"
+pandas = "1.1.5"
+Pillow = "7.0.0"
+python_i18n = "0.3.9"
+setuptools = "73.0.1"
+tools = "0.1.9"
+tqdm = "4.54.1"
+vcap = "0.3.8.1"
 
 [tool.poetry.scripts]
 openvisioncapsule-tools = 'openvisioncapsule_tools.cli:cli_main'

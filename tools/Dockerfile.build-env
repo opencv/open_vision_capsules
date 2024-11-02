@@ -1,0 +1,54 @@
+ARG UBUNTU_VERSION=24.04
+ARG PYTHON_VERSION=3
+
+FROM ubuntu:${UBUNTU_VERSION}
+
+ARG PYTHON_VERSION
+ENV PYTHON_VERSION=${PYTHON_VERSION}
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH="/root/.local/bin:$PATH"
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python${PYTHON_VERSION} \
+        python${PYTHON_VERSION}-venv \
+        python${PYTHON_VERSION}-pip \
+        python${PYTHON_VERSION}-dev \
+        curl \
+        build-essential \
+        gcc \
+        g++ \
+        libssl-dev \
+        libffi-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a virtual environment
+RUN python${PYTHON_VERSION} -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
+ENV GRPC_PYTHON_BUILD_SYSTEM_ZLIB=1
+
+# Upgrade pip and install setuptools and wheel within the virtual environment
+RUN pip install --upgrade pip setuptools wheel
+
+# Install Poetry
+RUN curl -sSL https://install.python-poetry.org | python -
+
+WORKDIR /open_vision_capsules/tools
+
+# Copy just the pyproject.toml and poetry.lock files
+COPY tools/pyproject.toml tools/poetry.lock* .
+
+# Configure Poetry to use the virtual environment
+RUN poetry config virtualenvs.create false
+RUN poetry config virtualenvs.path /opt/venv
+
+# Install project dependencies
+RUN poetry lock
+# RUN pip install \
+#         opencv_contrib_python=="4.10.0.84" \
+#         opencv_contrib_python_headless=="4.10.0.84"
+RUN poetry install --no-interaction --no-ansi --no-root

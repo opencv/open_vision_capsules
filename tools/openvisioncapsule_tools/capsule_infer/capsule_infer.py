@@ -21,7 +21,7 @@ import sys
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.insert(0, parent_dir)
 
-from tools.openvisioncapsule_tools.print_module_info import print_module_info
+from openvisioncapsule_tools.print_module_info import print_module_info
 
 def update_options(default_options, input_options):
     capsule_options = {}
